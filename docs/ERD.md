@@ -170,6 +170,7 @@ erDiagram
 
 ## Riwayat perubahan skema
 
+- **2026-08-23 (Iterasi 6)** — Tidak ada perubahan skema. `blog_posts` mendapat CRUD admin penuh (form paling kompleks sejauh ini karena `sections` adalah array objek dgn sub-objek opsional `codeSnippet`); `post_key` dan `slug` immutable dari sisi admin (sama pola dengan `project_key`/`experience_key`).
 - **2026-08-23 (Iterasi 5)** — Tidak ada perubahan skema. `experiences` mendapat CRUD admin penuh; `experience_key` immutable dari sisi admin (sama pola dengan `project_key` di Iterasi 4).
 - **2026-08-23 (Iterasi 4)** — Tidak ada perubahan skema. `projects` (sudah ada sebelum Fase 1, termasuk kolom JSON `tags`/`metrics`/`highlights`/`tech_stack`) mendapat CRUD admin penuh dengan repeater untuk keempat kolom JSON tersebut. `project_key` diputuskan immutable dari sisi admin (dibuat otomatis dari judul saat create, tidak bisa diedit) — bukan perubahan skema, murni aturan di level aplikasi.
 - **2026-08-23 (Iterasi 3)** — Tidak ada perubahan skema. `skills` (sudah ada sebelum Fase 1) mendapat CRUD admin penuh (menu About & Skills); halaman publik sudah membaca dari tabel ini sejak awal (bukan config), jadi tidak ada perubahan di sisi controller publik.

@@ -29,6 +29,42 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 6 — Blog (selesai: 2026-08-23)
+Status: Selesai
+
+### Ringkasan
+Menu "Blog" (placeholder sejak Iterasi 0) sekarang CRUD penuh — sesuai perkiraan di `RENCANA-PENGEMBANGAN.md`, ini iterasi paling kompleks di sisi form karena kolom `sections` adalah array objek dengan sub-objek opsional (`codeSnippet`) dan field opsional (`tip`). Diselesaikan dalam satu langkah (tidak perlu dipecah sub-langkah terpisah seperti diantisipasi rencana — kompleksitasnya masih tertangani dengan pola repeater Alpine yang sama dipakai di Iterasi 4/5). `post_key` **dan** `slug` sama-sama dibuat otomatis dari judul saat create dan immutable setelahnya (pola sama dengan `project_key`/`experience_key`).
+
+### File/area utama yang berubah
+- `app/Http/Controllers/Admin/BlogPostController.php` (baru) — CRUD penuh + `move()` + `index()` dgn search judul + filter kategori + pagination. Bagian paling rumit: `validated()` merekonstruksi tiap baris `sections[i]` dari field flat form (`heading`, `body`, `tip`, `code_language`, `code_filename`, `code_code`) menjadi struktur JSON asli (`{heading, body, codeSnippet?: {language, filename, code}, tip?}`) — baris section kosong (heading & body sama-sama kosong) di-skip, `codeSnippet` hanya disertakan bila salah satu dari 3 field code-nya diisi, `tip` hanya disertakan bila diisi. Ini menjaga bentuk JSON yang tersimpan tetap identik dengan yang dipakai seeder (field opsional benar-benar hilang dari array saat kosong, bukan string kosong).
+- **Keputusan `post_key` & `slug` immutable**: sama alasan dengan Iterasi 4/5 (`project_key`/`experience_key`) — keduanya dibuat sekali dari `Str::slug($title)` saat create (unik, dengan suffix `-2` dst bila bentrok) dan tidak bisa diedit dari form. `slug` sendiri saat ini belum dikonsumsi di mana pun pada halaman publik yang sudah ada (dicek: tidak muncul di `article-modal.blade.php`/`blog.blade.php` — kemungkinan disiapkan untuk halaman detail blog di Fase 2), tapi tetap diberi perlakuan sama (auto-generate + immutable + unique) karena kolomnya sudah `unique` di skema (lihat `docs/ERD.md`) sehingga harus diisi konsisten sejak sekarang.
+- `routes/admin.php` — placeholder `blog` dihapus dari `$placeholders`; ditambah 7 route `admin.blog*` (parameter route `{post}` mengikuti nama variabel `BlogPost $post` di controller untuk implicit model binding).
+- `resources/views/admin/blog/index.blade.php` (baru) — pola identik list Projects/Experience (search+filter+reorder+modal hapus+pagination), tambahan kolom info "N bagian" (jumlah `sections`) per baris.
+- `resources/views/admin/blog/form.blade.php` (baru) — form terpanjang sejauh ini: Informasi Dasar, Tags (repeater flat), Penulis & Gambar (2 pasang upload+preview: cover image & avatar penulis, pola sama dgn avatar Iterasi 2), dan Sections (repeater bersarang — tiap baris adalah kartu berisi heading, body, 2 field code (bahasa+nama file), textarea code (tampil bergaya editor gelap `bg-slate-900`), dan tip). Field code/tip sengaja **selalu ditampilkan** (bukan disembunyikan di belakang toggle "punya code?") untuk menyederhanakan Alpine state — kosongkan saja bila section itu tidak butuh code snippet/tip, konsisten dgn instruksi placeholder di textarea-nya.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru (skema `blog_posts` sudah lengkap sebelum Fase 1, termasuk kolom JSON `tags`/`sections`).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+- `php artisan route:list --path=admin/blog` — 7 route bersih, tidak ada placeholder tersisa.
+- `npm run build` — sukses.
+- End-to-end via `php artisan serve` + `curl` (cookie jar, login admin):
+  - `GET /admin/blog` → 200, 4 artikel seed tampil (`BlogPost::count()` = 4, cocok).
+  - `POST /admin/blog` menambah "Artikel Test Unik Quantum" dgn 2 sections (satu lengkap dgn code+tip, satu tanpa keduanya) → 302; dicek langsung ke DB via `tinker`: JSON `sections` tersimpan persis sesuai desain — section pertama punya `codeSnippet` & `tip`, section kedua **hanya** punya `heading`+`body` (kunci `codeSnippet`/`tip` benar-benar tidak ada, bukan kosong). `post_key` & `slug` sama-sama ter-generate `artikel-test-unik-quantum`. `GET /` sesudahnya mengandung judul artikel test (4 match) — bukti tambah artikel langsung tampil.
+  - `PUT /admin/blog/{id}` mengubah judul jadi "...EDITED" → 302; `GET /` mengandung judul baru; `post_key` dicek tetap `artikel-test-unik-quantum` (tidak berubah).
+  - `DELETE /admin/blog/{id}` untuk artikel test → 302; `BlogPost::count()` kembali 4; `GET /` → 0 match — bukti hapus langsung hilang.
+  - `storage/logs/laravel.log` dicek setelah seluruh rangkaian — kosong, tidak ada exception baru.
+  - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
+
+### Commit
+- (diisi setelah commit dibuat)
+
+### Catatan untuk review
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` diupdate hanya di bagian "Riwayat perubahan skema".
+
+---
+
 ## Iterasi 5 — Experience (selesai: 2026-08-23)
 Status: Selesai
 

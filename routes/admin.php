@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExperienceController;
 use App\Http\Controllers\Admin\PlaceholderController;
@@ -73,12 +74,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('experience/{experience}', [ExperienceController::class, 'destroy'])->name('experience.destroy');
         Route::patch('experience/{experience}/move', [ExperienceController::class, 'move'])->name('experience.move');
 
+        Route::get('blog', [BlogPostController::class, 'index'])->name('blog');
+        Route::get('blog/create', [BlogPostController::class, 'create'])->name('blog.create');
+        Route::post('blog', [BlogPostController::class, 'store'])->name('blog.store');
+        Route::get('blog/{post}/edit', [BlogPostController::class, 'edit'])->name('blog.edit');
+        Route::put('blog/{post}', [BlogPostController::class, 'update'])->name('blog.update');
+        Route::delete('blog/{post}', [BlogPostController::class, 'destroy'])->name('blog.destroy');
+        Route::patch('blog/{post}/move', [BlogPostController::class, 'move'])->name('blog.move');
+
         // Menus without a real feature yet — placeholder pages so the
         // sidebar never 404s while making the owning iteration explicit.
         // [route name suffix => [menu title, "Segera Hadir" note]]
         $placeholders = [
             'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
-            'blog' => ['Blog', 'Segera hadir — bagian dari Iterasi 6'],
             'testimonials' => ['Testimonials', 'Segera hadir — bagian dari Iterasi 7'],
             'messages' => ['Pesan Masuk', 'Segera hadir — bagian dari Iterasi 8'],
         ];
