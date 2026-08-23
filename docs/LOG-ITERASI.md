@@ -64,7 +64,7 @@ Menu "Pesan Masuk" (placeholder sejak Iterasi 0) sekarang berfungsi penuh — it
   - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect); file cookie jar scratch dihapus.
 
 ### Commit
-- (diisi setelah commit dibuat)
+- `d413f72` — Iterasi 8: Pesan Masuk — tandai dibaca otomatis, filter, hapus
 
 ### Catatan untuk review
 - **Ini iterasi terakhir dari rangkaian Iterasi 1-8 yang diminta dikerjakan otomatis berurutan.** Semua 11 menu admin non-Playground (Dashboard, Profil & Hero, Social Links, About & Skills, Projects, Experience, Blog, Testimonials, Pesan Masuk, Pengaturan Section, Login/Logout) kini punya fitur nyata — tidak ada lagi halaman "Segera Hadir" kecuali Playground (memang permanen by design). Ringkasan lengkap Iterasi 1-8 (hash commit, fitur, kredensial) dilaporkan terpisah ke pemanggil tugas di luar dokumen log ini.
