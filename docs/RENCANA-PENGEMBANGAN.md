@@ -1,6 +1,6 @@
 # Rencana Pengembangan — Admin Panel & Perapian Data
 
-Status: **Iterasi 0–8 selesai & terverifikasi (seluruh Fase 1 rampung).** Dikerjakan berurutan secara otomatis tanpa jeda review per-iterasi sesuai instruksi user (jeda review antar-iterasi yang dijelaskan di bagian 2 ditangguhkan untuk rentang ini) — rincian tiap iterasi ada di `LOG-ITERASI.md`, perubahan skema (bila ada) di `ERD.md`. Iterasi 9 (Polish & QA) **belum** dikerjakan — sengaja dihentikan di sini sesuai batas permintaan; lihat `LOG-ITERASI.md` Iterasi 8 untuk ringkasan penutup Fase 1.
+Status: **Iterasi 0–9 selesai & terverifikasi — Fase 1 TUNTAS SEPENUHNYA.** Dikerjakan berurutan secara otomatis tanpa jeda review per-iterasi sesuai instruksi user (jeda review antar-iterasi yang dijelaskan di bagian 2 ditangguhkan untuk rentang ini) — rincian tiap iterasi ada di `LOG-ITERASI.md`, perubahan skema di `ERD.md`. Iterasi 9 (Polish & QA lintas admin) sudah dikerjakan: audit konsistensi/responsif/animasi selesai, regresi penuh publik+admin hijau, README diperbarui. Siap lanjut ke **Fase 2** (perapian data index/projects/detail project) — detail Fase 2 akan disusun terpisah nanti, belum dimulai.
 Dibuat: 2026-08-23
 
 ## 1. Tujuan
