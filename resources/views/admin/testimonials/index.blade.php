@@ -65,7 +65,7 @@
                                 </form>
                             </div>
 
-                            <img src="{{ $item->avatar }}" alt="" class="w-11 h-11 rounded-full object-cover border border-white/90 shadow-2xs bg-slate-100 shrink-0" />
+                            <img src="{{ $item->avatar }}" alt="" width="44" height="44" loading="lazy" decoding="async" class="w-11 h-11 rounded-full object-cover border border-white/90 shadow-2xs bg-slate-100 shrink-0" />
 
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">

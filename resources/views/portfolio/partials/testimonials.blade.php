@@ -35,7 +35,7 @@
                     </div>
 
                     <div class="flex items-center gap-3 pt-4 border-t border-slate-200/50">
-                        <img src="{{ $item->avatar }}" alt="{{ $item->name }}" class="w-11 h-11 rounded-full object-cover border-2 border-white shadow-2xs" />
+                        <img src="{{ $item->avatar }}" alt="{{ $item->name }}" width="44" height="44" loading="lazy" decoding="async" class="w-11 h-11 rounded-full object-cover border-2 border-white shadow-2xs" />
                         <div>
                             <h4 class="text-sm font-bold text-slate-900">{{ $item->name }}</h4>
                             <p class="text-xs text-slate-500">{{ $item->role }}</p>

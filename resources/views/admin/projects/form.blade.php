@@ -128,7 +128,7 @@
         <div data-reveal class="bg-white/60 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-white/80 shadow-2xs space-y-4">
             <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2"><x-icon name="palette" class="w-4 h-4 text-indigo-600" /> Gambar Banner</h3>
             <div class="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 items-start">
-                <img :src="imagePreview || 'https://placehold.co/160x100?text=%3F'" alt="" class="w-40 h-24 rounded-2xl object-cover border border-white/90 shadow-2xs bg-slate-100" />
+                <img :src="imagePreview || 'https://placehold.co/160x100?text=%3F'" alt="" width="160" height="96" loading="lazy" decoding="async" class="w-40 h-24 rounded-2xl object-cover border border-white/90 shadow-2xs bg-slate-100" />
                 <div class="space-y-3 min-w-0">
                     <div class="space-y-1.5">
                         <label class="block text-xs font-bold text-slate-800">URL Gambar</label>

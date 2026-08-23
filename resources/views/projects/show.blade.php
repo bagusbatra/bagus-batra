@@ -47,6 +47,11 @@
                         src="{{ $project->image }}"
                         alt="{{ $project->title }}"
                         onerror="this.onerror=null;this.src='https://placehold.co/1200x800/0f172a/94a3b8?text=No+Image';"
+                        width="1200"
+                        height="800"
+                        loading="eager"
+                        decoding="async"
+                        fetchpriority="high"
                         class="w-full h-full object-cover opacity-60 mix-blend-luminosity scale-105"
                     />
                     <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
@@ -277,6 +282,10 @@
                                         src="{{ $r->image }}"
                                         alt="{{ $r->title }}"
                                         onerror="this.onerror=null;this.src='https://placehold.co/600x400/e2e8f0/64748b?text=No+Image';"
+                                        width="600"
+                                        height="400"
+                                        loading="lazy"
+                                        decoding="async"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     />
                                 </div>

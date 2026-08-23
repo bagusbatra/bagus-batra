@@ -90,7 +90,7 @@
                     <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight" x-text="$store.ui.activeArticle.title"></h1>
 
                     <div class="flex items-center gap-3 pt-2">
-                        <img :src="$store.ui.activeArticle.author.avatar" :alt="$store.ui.activeArticle.author.name" class="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                        <img :src="$store.ui.activeArticle.author.avatar" :alt="$store.ui.activeArticle.author.name" width="40" height="40" loading="lazy" decoding="async" class="w-10 h-10 rounded-full object-cover border border-slate-200" />
                         <div>
                             <div class="text-sm font-bold text-slate-900" x-text="$store.ui.activeArticle.author.name"></div>
                             <div class="text-xs text-slate-500" x-text="$store.ui.activeArticle.author.role"></div>
@@ -100,7 +100,7 @@
 
                 {{-- Article Cover Image --}}
                 <div class="rounded-2xl overflow-hidden max-h-96 border border-slate-200 shadow-xs">
-                    <img :src="$store.ui.activeArticle.coverImage" :alt="$store.ui.activeArticle.title" class="w-full h-full object-cover" />
+                    <img :src="$store.ui.activeArticle.coverImage" :alt="$store.ui.activeArticle.title" width="800" height="450" loading="lazy" decoding="async" class="w-full h-full object-cover" />
                 </div>
 
                 {{-- Post Summary Lead --}}
@@ -199,7 +199,7 @@
                             <div class="p-4 bg-white rounded-2xl border border-slate-200/80 space-y-1.5">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
-                                        <img :src="c.avatar" :alt="c.author" class="w-7 h-7 rounded-full object-cover" />
+                                        <img :src="c.avatar" :alt="c.author" width="28" height="28" loading="lazy" decoding="async" class="w-7 h-7 rounded-full object-cover" />
                                         <span class="text-xs font-bold text-slate-900" x-text="c.author"></span>
                                     </div>
                                     <span class="text-[11px] text-slate-400" x-text="c.date"></span>

@@ -93,6 +93,10 @@
                                     src="{{ $project->image }}"
                                     alt="{{ $project->title }}"
                                     onerror="this.onerror=null;this.src='https://placehold.co/800x600/e2e8f0/64748b?text=No+Image';"
+                                    width="800"
+                                    height="600"
+                                    loading="lazy"
+                                    decoding="async"
                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 />
                                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>

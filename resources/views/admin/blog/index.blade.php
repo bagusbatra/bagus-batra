@@ -65,7 +65,7 @@
                                 </form>
                             </div>
 
-                            <img src="{{ $post->cover_image }}" alt="" class="w-14 h-14 rounded-xl object-cover border border-white/90 shadow-2xs bg-slate-100 shrink-0" />
+                            <img src="{{ str_contains($post->cover_image, 'images.unsplash.com') ? preg_replace('/([?&]w=)\d+/', '${1}120', $post->cover_image) : $post->cover_image }}" alt="" width="56" height="56" loading="lazy" decoding="async" class="w-14 h-14 rounded-xl object-cover border border-white/90 shadow-2xs bg-slate-100 shrink-0" />
 
                             <div class="min-w-0">
                                 <div class="text-sm font-bold text-slate-800 truncate">{{ $post->title }}</div>

@@ -153,7 +153,7 @@
                     x-data="{ preview: @js(old($img['field'].'_url', $img['current'])) }"
                     class="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 items-start pt-1"
                 >
-                    <img :src="preview || 'https://placehold.co/96x96?text=%3F'" alt="" class="w-24 h-24 rounded-2xl object-cover border border-white/90 shadow-2xs bg-slate-100" />
+                    <img :src="preview || 'https://placehold.co/96x96?text=%3F'" alt="" width="96" height="96" loading="lazy" decoding="async" class="w-24 h-24 rounded-2xl object-cover border border-white/90 shadow-2xs bg-slate-100" />
 
                     <div class="space-y-3 min-w-0">
                         <div class="space-y-1.5">

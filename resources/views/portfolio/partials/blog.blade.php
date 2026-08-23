@@ -102,7 +102,7 @@
                     <div class="space-y-4">
                         {{-- Cover Image & Category Pill --}}
                         <div class="relative h-48 sm:h-56 overflow-hidden bg-slate-100 cursor-pointer" @click="$store.ui.openArticle(post)">
-                            <img src="{{ $post->cover_image }}" alt="{{ $post->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <img src="{{ $post->cover_image }}" alt="{{ $post->title }}" width="800" height="450" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             <div class="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent"></div>
 
                             <div class="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between">

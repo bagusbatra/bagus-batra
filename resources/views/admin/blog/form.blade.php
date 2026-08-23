@@ -131,7 +131,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div class="space-y-3">
                     <div class="flex items-center gap-3">
-                        <img :src="coverPreview || 'https://placehold.co/96x60?text=%3F'" alt="" class="w-24 h-16 rounded-xl object-cover border border-white/90 shadow-2xs bg-slate-100 shrink-0" />
+                        <img :src="coverPreview || 'https://placehold.co/96x60?text=%3F'" alt="" width="96" height="64" loading="lazy" decoding="async" class="w-24 h-16 rounded-xl object-cover border border-white/90 shadow-2xs bg-slate-100 shrink-0" />
                         <span class="text-xs font-bold text-slate-600">Cover Image</span>
                     </div>
                     <input type="text" name="cover_image_url" x-model="coverPreview" value="{{ old('cover_image_url', $post->cover_image) }}" placeholder="URL gambar cover" class="w-full px-4 py-2.5 bg-white/70 backdrop-blur-md rounded-xl border border-white/90 text-sm text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs transition-colors" />
@@ -141,7 +141,7 @@
                 </div>
                 <div class="space-y-3">
                     <div class="flex items-center gap-3">
-                        <img :src="avatarPreview || 'https://placehold.co/64x64?text=%3F'" alt="" class="w-16 h-16 rounded-full object-cover border border-white/90 shadow-2xs bg-slate-100 shrink-0" />
+                        <img :src="avatarPreview || 'https://placehold.co/64x64?text=%3F'" alt="" width="64" height="64" loading="lazy" decoding="async" class="w-16 h-16 rounded-full object-cover border border-white/90 shadow-2xs bg-slate-100 shrink-0" />
                         <span class="text-xs font-bold text-slate-600">Avatar Penulis</span>
                     </div>
                     <input type="text" name="author_avatar_url" x-model="avatarPreview" value="{{ old('author_avatar_url', $post->author_avatar) }}" placeholder="URL avatar" class="w-full px-4 py-2.5 bg-white/70 backdrop-blur-md rounded-xl border border-white/90 text-sm text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs transition-colors" />

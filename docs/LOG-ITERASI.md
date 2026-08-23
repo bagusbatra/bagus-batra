@@ -29,6 +29,71 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 14 — Optimasi Pemuatan Gambar (selesai: 2026-08-23)
+Status: Selesai — **Fase 3 (Optimalisasi Performa), lanjutan Iterasi 13.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 5 Iterasi 14. Tujuan: seluruh `<img>` di codebase (publik & admin) sebelumnya dimuat eager tanpa `width`/`height` eksplisit (nol dari 18 elemen memakainya, dikonfirmasi via grep ulang `<img` di `resources/views/**/*.blade.php` — hasilnya persis 18 elemen di 14 file, cocok dengan audit sebelumnya). Diterapkan `loading="lazy"`/`loading="eager"` + `decoding="async"` + `width`/`height` eksplisit di semua 18, plus `fetchpriority="high"` untuk 2 kandidat LCP. **Catatan penting**: saat sesi ini dimulai, `git status` menunjukkan working tree BERSIH dan Iterasi 13 ternyata SUDAH ter-commit (`b433e69 feat: Optimize performance by separating public and admin JS bundles`) — berbeda dari instruksi tugas yang menyebutnya masih uncommitted. Tidak diutak-atik (tidak revert, tidak amend) — perubahan Iterasi 14 ini murni ditumpuk sebagai commit baru di atasnya, tetap **tidak ada `git add`/`git commit` dijalankan** di sesi ini sesuai aturan Fase 3.
+
+**Klasifikasi above-the-fold vs below-the-fold (18 total, 2 above / 16 below):**
+- **Above-the-fold (2)** — `loading="eager"` + `decoding="async"` + `fetchpriority="high"` + `width`/`height`:
+  1. `portfolio/partials/hero.blade.php` — avatar Hero di halaman index (`w-13 h-13 sm:w-14 sm:h-14` → `width="56" height="56"`, breakpoint terbesar dipakai).
+  2. `projects/show.blade.php` — banner gambar utama halaman detail project `/projects/{key}` (`h-64 sm:h-80`, mengikuti rasio placeholder `onerror` yang sudah ada 1200x800 → `width="1200" height="800"`).
+- **Below-the-fold (16)** — `loading="lazy"` + `decoding="async"` + `width`/`height`: grid project index (`portfolio/partials/projects.blade.php`, 800x600 mengikuti rasio placeholder `onerror`), grid katalog `/projects` (`projects/index.blade.php`, 800x600), related project di detail (`projects/show.blade.php`, 600x400 mengikuti placeholder), grid blog index (`portfolio/partials/blog.blade.php`, 800x450 — tidak ada `onerror` existing jadi dipakai rasio 16:9 mendekati proporsi kartu `h-48 sm:h-56`), avatar testimonial publik (`portfolio/partials/testimonials.blade.php`, 44x44), 3 gambar di dalam modal artikel (`portfolio/partials/article-modal.blade.php`: avatar penulis 40x40, cover artikel 800x450, avatar komentar 28x28 — dinamis via `:src` Alpine, atribut statis `width`/`height`/`loading`/`decoding` tetap valid ditambahkan berdampingan), dan SEMUA gambar admin (list `admin/projects/index.blade.php` 56x56, `admin/blog/index.blade.php` 56x56, `admin/testimonials/index.blade.php` 44x44; preview form `admin/projects/form.blade.php` 160x96, `admin/blog/form.blade.php` 96x64 & 64x64, `admin/testimonials/form.blade.php` 72x72, `admin/profile/edit.blade.php` 96x96 — semua form preview pakai Alpine `:src` dinamis, dimensi diambil dari ukuran placeholder `placehold.co` yang sudah ada di fallback `||` masing-masing, tidak diubah).
+
+Untuk kasus yang ukurannya benar-benar responsif (lebar mengikuti grid/container, tinggi tetap via class `h-*`) — bukan aspect-ratio CSS terpisah yang dipakai, melainkan `width`/`height` HTML attribute mengikuti rasio placeholder `onerror` yang sudah ada di kode (atau rasio 16:9 untuk blog yang belum punya placeholder) sebagai referensi aspek rasio; ukuran box aktual tetap 100% dikontrol Tailwind (`w-full h-48`/`h-full` dst, tidak diubah), jadi atribut ini hanya membantu browser mereservasi rasio sebelum gambar termuat tanpa mengubah tampilan akhir sedikit pun.
+
+**Penyesuaian parameter `w=` Unsplash — hanya 2 lokasi, keduanya thumbnail admin list**: dicek dulu seluruh URL Unsplash yang dipakai (`database/seeders/ProjectSeeder.php`, `BlogPostSeeder.php`, `TestimonialSeeder.php` — tidak ada URL Unsplash hardcode di Blade manapun, semua datang dari kolom DB `image`/`cover_image`/`avatar`). Karena field gambar yang SAMA dipakai ulang di beberapa konteks render berbeda (mis. `$project->image` dipakai di kartu grid ~380px, katalog ~380px, DAN banner detail ~1200px), parameter `w=` yang tersimpan (1000 untuk project, 500-800 untuk blog, 200 untuk testimonial) sudah proporsional untuk konteks TERBESAR pemakaiannya masing-masing — **kecuali** di dua tempat: `admin/projects/index.blade.php` dan `admin/blog/index.blade.php`, yang menampilkan field yang sama hanya sebagai thumbnail list `w-14 h-14` (56×56px) padahal URL tersimpan minta `w=1000`/`w=800-1000` (9-18x lebih besar dari kebutuhan render, jelas "jomplang jauh" sesuai kriteria rencana). Karena mengubah `w=` di sumber data (DB/seeder) akan menurunkan kualitas di konteks besar (katalog/banner) yang memakai field sama, solusinya di level Blade: `src` untuk kedua img ini dibungkus ekspresi `str_contains($x, 'images.unsplash.com') ? preg_replace('/([?&]w=)\d+/', '${1}120', $x) : $x` — mengecilkan `w=` jadi 120 (2x dari 56px untuk retina) HANYA saat dirender sebagai thumbnail admin, TIDAK mengubah nilai `w=` yang tersimpan di DB (jadi kartu index/katalog/banner tetap dapat resolusi penuh seperti sebelumnya). Diverifikasi via curl: `GET /admin/projects` mengandung 5x `w=120` (5 project di DB), `GET /admin/blog` mengandung 4x `w=120` (4 post di DB). Avatar testimonial (`w=200` tersimpan) TIDAK disesuaikan — konteks terbesar pemakaiannya (preview form admin `w-18 h-18` = 72px, butuh ~144px di retina) masih cukup dekat dengan 200, tidak "jomplang jauh". URL non-Unsplash (`placehold.co` di fallback preview form) sengaja tidak disentuh sesuai batasan tugas.
+
+### File/area utama yang berubah
+- `resources/views/portfolio/partials/hero.blade.php` — avatar Hero: `width`/`height`/`loading="eager"`/`decoding="async"`/`fetchpriority="high"`.
+- `resources/views/projects/show.blade.php` — banner detail (eager + fetchpriority tinggi) & kartu related project (lazy), keduanya + `width`/`height`.
+- `resources/views/portfolio/partials/projects.blade.php`, `resources/views/projects/index.blade.php` — kartu project grid index & katalog: lazy + `width="800" height="600"`.
+- `resources/views/portfolio/partials/blog.blade.php` — kartu blog grid index: lazy + `width="800" height="450"`.
+- `resources/views/portfolio/partials/testimonials.blade.php` — avatar testimonial publik: lazy + `width="44" height="44"`.
+- `resources/views/portfolio/partials/article-modal.blade.php` — 3 gambar (avatar penulis, cover artikel, avatar komentar): lazy + dimensi masing-masing.
+- `resources/views/admin/projects/index.blade.php`, `resources/views/admin/blog/index.blade.php` — thumbnail list: lazy + `width="56" height="56"` + override `w=120` untuk URL Unsplash.
+- `resources/views/admin/testimonials/index.blade.php` — thumbnail avatar list: lazy + `width="44" height="44"` (tanpa override `w=`).
+- `resources/views/admin/projects/form.blade.php`, `resources/views/admin/blog/form.blade.php`, `resources/views/admin/testimonials/form.blade.php`, `resources/views/admin/profile/edit.blade.php` — preview gambar form (Alpine `:src` dinamis): lazy + dimensi sesuai ukuran render masing-masing.
+- `docs/LOG-ITERASI.md` — entri ini sendiri.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru (Fase 3 murni optimasi aset, tidak ada perubahan skema).
+- Tidak ada seeder baru dijalankan/diubah (seeder Unsplash dicek untuk audit `w=`, tapi filenya sendiri **tidak diedit** — perbaikan dilakukan di level Blade `src` per konteks, bukan di sumber data, sesuai alasan di Ringkasan).
+
+### Verifikasi
+**Fungsional — via `php artisan serve` (port 8124) + `curl`:**
+- `GET /` → 200. `GET /projects` → 200. `GET /projects/lumina-saas` → 200. `GET /admin/login` → 200.
+- Login admin (`admin@bagusbatra.dev`/`Admin#12345`) via curl cookie jar → `POST /admin/login` 302; `GET /admin/dashboard`, `GET /admin/projects`, `GET /admin/blog`, `GET /admin/testimonials`, `GET /admin/projects/1/edit` (sesi login) → 200 semua.
+- `storage/logs/laravel.log` dikosongkan sebelum sesi, dicek bersih (0 baris) di akhir sesi.
+- Server dimatikan setelah verifikasi (dikonfirmasi request berikutnya `000`/connection refused).
+
+**Hitung `loading="lazy"` vs `loading="eager"` per halaman (grep pada response HTML aktual via curl):**
+
+| Halaman | `loading="lazy"` | `loading="eager"` | Total `<img>` |
+|---|---|---|---|
+| `GET /` | 13 | 1 | 14 |
+| `GET /projects` | 8 | 0 | 8 |
+| `GET /projects/lumina-saas` | 6 | 1 | 7 |
+| `GET /admin/projects` | 5 | 0 | 5 |
+| `GET /admin/blog` | 4 | 0 | 4 |
+| `GET /admin/testimonials` | 3 | 0 | 3 |
+
+Sebelum perubahan: seluruh gambar di atas dimuat **eager** tanpa atribut (0 `lazy`, 0 `width`/`height` di manapun). Sesudah: untuk 1x load `GET /` (halaman paling ramai gambar sekaligus di publik), **13 dari 14 gambar** (93%) sekarang ditunda pemuatannya sampai mendekati viewport — browser tidak lagi mengunduh gambar grid project, grid blog, dan avatar testimonial di awal render, hanya avatar Hero yang tetap eager. Untuk `GET /projects` (halaman terberat gambar sekaligus — grid katalog penuh), **8 dari 8 gambar** (100%) ditunda karena tidak ada elemen above-the-fold di halaman ini (hero tidak dipakai di sini).
+
+**Verifikasi override `w=`**: `GET /admin/projects` (dengan sesi login) mengandung 5x kemunculan `w=120` (cocok 5 baris project di DB), `GET /admin/blog` mengandung 4x kemunculan `w=120` (cocok 4 baris blog post di DB) — dikonfirmasi lewat grep pada response HTML mentah, bukan asumsi.
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user (lihat catatan Fase 3 di `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 2). Seluruh perubahan iterasi ini (14 file Blade + entri log ini sendiri) ada di working tree sebagai uncommitted changes.
+
+### Catatan untuk review
+- **Ditemukan ketidaksesuaian instruksi vs kondisi nyata di awal sesi**: tugas menyebut Iterasi 13 "belum di-commit" tapi `git log` menunjukkan sudah ter-commit (`b433e69`). Tidak diambil tindakan apa pun terhadap commit tersebut (tidak direvert/diamend) — perubahan Iterasi 14 murni ditumpuk sebagai diff baru di atas commit itu, working tree sekarang HANYA berisi 14 file Blade dari Iterasi 14 (dikonfirmasi `git status --short` — tidak ada sisa perubahan Iterasi 13 yang tercampur).
+- Tidak menjalankan `npm run build` — perubahan iterasi ini murni atribut HTML di Blade, tidak menyentuh JS/CSS/Vite entry.
+- **Belum lanjut ke Iterasi 15** (Query & Cache Layer) sesuai batasan tugas — berhenti di sini menunggu instruksi lanjut, konsisten dengan pola "tidak dirantai otomatis" Fase 3.
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` tidak diupdate (sesuai instruksi eksplisit tugas ini).
+
+---
+
 ## Iterasi 13 — Pemisahan Bundle Publik vs Admin (selesai: 2026-08-23)
 Status: Selesai — **Awal Fase 3 (Optimalisasi Performa).**
 

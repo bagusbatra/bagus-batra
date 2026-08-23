@@ -101,7 +101,7 @@
                             <div class="flex items-center justify-between pb-4 border-b border-slate-200/50">
                                 <div class="flex items-center gap-3.5">
                                     <div class="relative">
-                                        <img src="{{ $personalInfo['avatar'] }}" alt="{{ $personalInfo['name'] }}" class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-white shadow-sm" />
+                                        <img src="{{ $personalInfo['avatar'] }}" alt="{{ $personalInfo['name'] }}" width="56" height="56" loading="eager" decoding="async" fetchpriority="high" class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-white shadow-sm" />
                                         <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white"></div>
                                     </div>
                                     <div>
