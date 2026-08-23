@@ -102,7 +102,9 @@ Tidak ada halaman registrasi admin publik dan tidak ada reset password via email
 ### Shared
 - `resources/views/components/icon.blade.php` — komponen ikon SVG inline (pengganti lucide-react), dipakai di halaman publik maupun admin
 - `resources/css/app.css` — Tailwind v4 + custom classes (frosted-glass, scrollbar, reveal-on-scroll, dsb.)
-- `resources/js/app.js` — entry point Alpine.js, mengimpor `reveal.js` (reveal-on-scroll, dipakai publik & admin), `portfolio.js` (store bahasa, store UI/modal, komponen per section publik), dan `admin.js` (komponen Alpine khusus admin, mis. toggle section)
+- `resources/js/reveal.js` — reveal-on-scroll (IntersectionObserver `[data-reveal]` + komponen Alpine `revealOnScroll`), dipakai publik & admin, di-import oleh KEDUA entry di bawah
+- `resources/js/public.js` — entry Vite untuk halaman publik (Iterasi 13/Fase 3): Alpine core + `reveal.js` + `portfolio.js` (store bahasa, store UI/modal, komponen per section publik)
+- `resources/js/admin.js` — entry Vite untuk halaman admin (Iterasi 13/Fase 3): Alpine core + `reveal.js` + komponen Alpine khusus admin (mis. `sectionToggle`) — TIDAK mengimpor `portfolio.js`, jadi halaman admin tidak ikut mengunduh logic publik (lang store, playground demo, dst)
 
 ## Catatan
 

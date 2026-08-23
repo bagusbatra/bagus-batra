@@ -29,6 +29,73 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 13 — Pemisahan Bundle Publik vs Admin (selesai: 2026-08-23)
+Status: Selesai — **Awal Fase 3 (Optimalisasi Performa).**
+
+### Ringkasan
+Iterasi pertama Fase 3, sesuai `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 5 Iterasi 13. Tujuan: hentikan halaman admin (termasuk halaman login sebelum autentikasi) mengunduh seluruh logic publik (`portfolio.js` — lang store, scroll-spy, floating widget, demo Playground) yang sebelumnya ikut terbawa karena satu entry Vite (`app.js`) dipakai identik di semua halaman, dan sebaliknya halaman publik tidak perlu helper CRUD admin (`sectionToggle`). **Tidak ada perubahan tampilan/perilaku yang terlihat user** — murni bagaimana JS dikirim ke browser per konteks halaman.
+
+**Perubahan entry point**: `resources/js/app.js` dihapus, diganti 2 entry mandiri:
+- `resources/js/public.js` (baru) — `import Alpine from 'alpinejs'; import './reveal'; import './portfolio';` + `Alpine.start()`. Dipakai `layouts/app.blade.php` (halaman publik: `/`, `/projects`, `/projects/{key}`) dan `welcome.blade.php` (halaman scaffold default Laravel, tidak pernah dirutekan oleh `routes/web.php` manapun — dicek eksplisit, tapi tetap diupdate `@vite()`-nya sekalian daripada dibiarkan menunjuk ke file yang sudah dihapus).
+- `resources/js/admin.js` (diubah jadi entry mandiri, isinya tetap sama — helper `sectionToggle`) — sekarang `import Alpine from 'alpinejs'; import './reveal';` ditambahkan di atas + `Alpine.start()` ditambahkan di bawah (sebelumnya `admin.js` hanya modul yang di-import `app.js`, bukan entry sendiri). Dipakai `admin/layouts/app.blade.php` dan `admin/auth/login.blade.php`.
+
+**Dicek dulu (grep menyeluruh) sebelum memutuskan isi `admin.js`**: apakah ada view admin yang diam-diam bergantung pada sesuatu dari `portfolio.js` (mis. `$store.lang`, `$store.ui`, `appRoot()`) yang sebelumnya "gratis" ikut karena satu bundle gabungan. Hasil: **tidak ada** — satu-satunya komponen dari luar file admin sendiri yang dipakai halaman admin adalah `x-data="revealOnScroll"` (dipakai `admin/layouts/app.blade.php` `<main>` dan `admin/auth/login.blade.php` `<body>`), yang sudah didefinisikan di `reveal.js` (bukan `portfolio.js`) sejak awal — jadi cukup `import './reveal'` di `admin.js`, tidak perlu duplikasi apa pun dari `portfolio.js`. Sebaliknya, tidak ada view publik yang memakai `sectionToggle`. Cross-check dikonfirmasi lewat grep nama komponen (`appRoot|aboutSection|projectsSection|blogSection|articleModal|playground|contactSection|socialBar|revealOnScroll|sectionToggle`) di `resources/views/portfolio/**`, `resources/views/projects/**`, `resources/views/layouts/app.blade.php` vs `resources/views/admin/**` — tidak ada satu pun yang salah tempat.
+
+**Shared chunk Alpine core — didapat GRATIS dari Vite/Rollup, tanpa config tambahan**: karena `public.js` DAN `admin.js` sama-sama `import './reveal'` (yang sendiri `import Alpine from 'alpinejs'`), Rollup otomatis mendeteksi modul bersama dan memisahkannya jadi chunk terpisah (`reveal-[hash].js`, isinya Alpine core + `reveal.js`, 53.168 KB raw / 18.605 KB gzip) yang di-`modulepreload` oleh KEDUA entry (dikonfirmasi lewat `public/build/manifest.json`: baik `resources/js/public.js` maupun `resources/js/admin.js` punya `"imports": ["_reveal-....js"]`). Artinya Alpine core **tidak terduplikasi** dua kali di dua bundle terpisah — trade-off "splitting effort" yang disebut di rencana (bagian 5 Iterasi 13) ternyata tidak perlu usaha manual sama sekali, Vite menanganinya otomatis selama kedua entry sama-sama meng-import modul yang sama.
+
+**Keputusan CSS: TETAP SATU FILE (`resources/css/app.css`), tidak dipecah.** Dicek isi filenya (148 baris): `@import 'tailwindcss'` + `@theme` (font tokens) + custom classes (`.frosted-glass*`, custom scrollbar, `[data-reveal]`, ambient blob animations, `[x-cloak]`) — **semuanya dipakai di KEDUA sisi** (frosted-glass & ambient blob dipakai layout admin persis sama dgn layout publik, lihat `admin/layouts/app.blade.php` baris 19-22 yang mereplikasi `ambient-blob` publik; `[data-reveal]`/`revealOnScroll` dipakai admin juga). Tailwind v4 sudah content-scan seluruh `resources/views/**` (termasuk admin) lewat `@source` di `app.css`, jadi output CSS yang dihasilkan sudah otomatis hanya berisi utility class yang benar-benar dipakai — memecah jadi `public.css`/`admin.css` terpisah akan butuh 2x proses Tailwind scan (2x @theme, 2x custom classes duplikat atau di-`@import` silang) untuk manfaat yang sangat kecil (kelas admin-only vs publik-only kemungkinan besar overlap besar, tidak ada scoping halaman admin yang beda drastis secara visual dari publik — sama-sama pakai palet indigo/slate & frosted-glass). Kompleksitas tambahan tidak sepadan dengan potensi penghematan, sesuai izin eksplisit di rencana bagian 5 ("keputusan diambil saat implementasi, dicatat alasannya").
+
+### File/area utama yang berubah
+- `resources/js/public.js` (baru) — entry Vite publik: Alpine core + `reveal.js` + `portfolio.js` + `Alpine.start()`.
+- `resources/js/admin.js` — diubah dari modul biasa jadi entry Vite mandiri: tambah `import Alpine from 'alpinejs'; import './reveal';` di atas dan `window.Alpine = Alpine; Alpine.start();` di bawah; isi `sectionToggle` tidak diubah.
+- `resources/js/app.js` — **dihapus** (tidak dipakai lagi, semua 4 referensi `@vite(['resources/js/app.js'...])` diupdate).
+- `vite.config.js` — `input: [...]` diubah dari `['resources/css/app.css', 'resources/js/app.js']` jadi `['resources/css/app.css', 'resources/js/public.js', 'resources/js/admin.js']`.
+- `resources/views/layouts/app.blade.php`, `resources/views/welcome.blade.php` — `@vite([...])` diarahkan ke `resources/js/public.js`.
+- `resources/views/admin/layouts/app.blade.php`, `resources/views/admin/auth/login.blade.php` — `@vite([...])` diarahkan ke `resources/js/admin.js`.
+- `README.md` — baris deskripsi struktur `resources/js/*` diupdate (1 baris `app.js` lama diganti 3 baris: `reveal.js`/`public.js`/`admin.js`, jelaskan pemisahan Iterasi 13).
+- `resources/js/reveal.js`, `resources/js/portfolio.js` — **tidak diubah** (isinya sudah tepat sejak awal, hanya cara di-import yang berubah).
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru (Fase 3 murni optimasi aset, tidak ada perubahan skema).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+**Ukuran bundle — before (baseline, satu bundle gabungan untuk semua halaman) vs after (per konteks):**
+
+| Bundle | Raw | Gzip |
+|---|---|---|
+| **Before** — `app.css` | 133.072 KB | 20.554 KB |
+| **Before** — `app.js` (Alpine + reveal + portfolio + admin) | 61.611 KB | 21.585 KB |
+| **Before** — Total per 1x load (SEMUA halaman, publik maupun admin) | **194.683 KB** | **42.139 KB** |
+| **After** — `app.css` (tetap 1 file, tidak berubah) | 133.072 KB | 20.554 KB |
+| **After** — chunk shared `reveal-*.js` (Alpine core + reveal.js, dipakai KEDUA entry via modulepreload) | 53.168 KB | 18.605 KB |
+| **After** — `public.js` (portfolio.js logic) | 7.774 KB | 2.943 KB |
+| **After** — `admin.js` (sectionToggle saja) | 0.796 KB | 0.489 KB |
+| **After** — Total per 1x load HALAMAN PUBLIK (css + public.js + reveal chunk, TANPA admin.js) | **194.014 KB** | **42.102 KB** |
+| **After** — Total per 1x load HALAMAN ADMIN (css + admin.js + reveal chunk, TANPA public.js/portfolio.js) | **187.036 KB** | **39.648 KB** |
+
+Halaman publik nyaris tidak berubah (wajar — halaman publik memang butuh hampir semua logic yang ada, cuma kehilangan 0.796 KB `sectionToggle` yang memang tidak pernah dipakainya): -0.669 KB raw (-0.3%), -0.037 KB gzip (~0%). Halaman admin turun nyata di sisi JS: -7.647 KB raw (-3.9% dari total, atau **-12.4% khusus JS**), -2.491 KB gzip (-5.9% dari total, atau **-11.5% khusus JS**) — penghematan berasal murni dari `portfolio.js` (427 baris logic publik: lang store, scroll-spy, floating widget, blog filter, article modal, 3 demo Playground) yang sekarang tidak lagi ikut terkirim ke browser admin. Sebagian besar ukuran bundle (Alpine.js core, ~53 KB raw / ~18.6 KB gzip) memang harus tetap ada di kedua sisi karena baik publik maupun admin sama-sama pakai Alpine untuk interaktivitas — chunk ini **tidak terduplikasi** berkat code-splitting otomatis Rollup (lihat Ringkasan), jadi tidak ada biaya ganda untuk itu.
+
+**Fungsional — via `php artisan serve` (port 8123, terpisah dari default 8000) + `curl`:**
+- `GET /` → 200. `GET /projects` → 200. `GET /projects/aurora-commerce` (project pertama di DB saat verifikasi) → 200. `GET /admin/login` → 200.
+- Login admin (`admin@bagusbatra.dev`/`Admin#12345`) via curl cookie jar (`--data-urlencode`, token CSRF diambil dari halaman login) → `POST /admin/login` 302 ke `/admin/dashboard`; `GET /admin/dashboard` dgn cookie sesi → 200, `<title>Dashboard — Admin Bagus Batra</title>` terkonfirmasi (bukan halaman login yang ke-redirect balik).
+- 4 halaman admin tambahan dicek sekalian: `GET /admin/projects`, `/admin/section-settings`, `/admin/profile`, `/admin/messages` → 200 semua (dgn sesi login yang sama).
+- **Verifikasi tag `<script>`/`<link>` yang di-generate `@vite()` menunjuk bundle yang benar** (grep `manifest.json` utk konfirmasi nama file ter-hash cocok dgn HTML): `GET /`, `/projects`, `/projects/{key}` semuanya me-load `app-*.css` + `public-*.js` + `reveal-*.js` (via `modulepreload`) — **TIDAK ADA** `admin-*.js`. `GET /admin/login` dan `GET /admin/dashboard` (setelah login) semuanya me-load `app-*.css` + `admin-*.js` + `reveal-*.js` — **TIDAK ADA** `public-*.js`. Dikonfirmasi via `public/build/manifest.json`: `resources/js/public.js` → `admin/imports` tidak saling silang, masing-masing entry hanya `import` chunk `reveal` yang sama.
+- Sanity check silang Alpine (grep, bukan browser sungguhan — dicatat sebagai keterbatasan sesuai instruksi tugas): seluruh nama komponen (`appRoot`, `aboutSection`, `projectsSection`, `blogSection`, `articleModal`, `playground`, `contactSection`, `socialBar`) yang dipanggil dari `x-data="..."` di `resources/views/portfolio/**` & `resources/views/projects/**` **semuanya** ada persis di `portfolio.js` (dibundel via `public.js`); satu-satunya komponen dipakai `resources/views/admin/**` di luar inline object literal (`x-data="{ ... }"`) adalah `sectionToggle` (ada di `admin.js`) — **tidak ditemukan** referensi ke `$store.lang`/`$store.ui`/`appRoot` di manapun di bawah `resources/views/admin/`.
+- `storage/logs/laravel.log` dikosongkan sebelum sesi, dicek bersih (0 baris) di akhir sesi — tidak ada exception baru dari perubahan ini.
+- Server `php artisan serve` dimatikan setelah verifikasi (dikonfirmasi request berikutnya `000`/connection refused).
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user (lihat catatan Fase 3 di `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 2). Seluruh perubahan iterasi ini (kode + entri log ini sendiri) ada di working tree sebagai uncommitted changes.
+
+### Catatan untuk review
+- **Ini iterasi pertama Fase 3** — beda dari Fase 1/2, TIDAK dirantai otomatis ke Iterasi 14 (Optimasi Pemuatan Gambar), sesuai instruksi eksplisit di `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 2. Berhenti di sini menunggu instruksi lanjut.
+- Keputusan CSS tetap satu file (bukan dipecah publik/admin) — alasan lengkap di Ringkasan: isi `app.css` overlap besar antara kedua sisi (frosted-glass, ambient blob, reveal-on-scroll, custom scrollbar semuanya dipakai admin juga), dan Tailwind v4 content-scan sudah otomatis menghasilkan CSS minimal tanpa perlu campur tangan splitting manual.
+- File `resources/views/welcome.blade.php` (scaffold default Laravel, TIDAK pernah dirutekan `routes/web.php` mana pun — dicek eksplisit) ikut diupdate `@vite()`-nya ke `public.js` murni untuk kebersihan (menghindari referensi ke `resources/js/app.js` yang sudah dihapus), bukan karena halaman ini benar-benar dipakai — di luar scope fungsional iterasi ini, tidak diverifikasi via curl karena memang tidak ada route yang mengarah ke sana.
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` tidak diupdate (sesuai instruksi eksplisit tugas ini).
+
+---
+
 ## Iterasi 12 — Merapikan Data & Audit Akhir (selesai: 2026-08-23)
 Status: Selesai — **Fase 2 (Iterasi 10-12) TUNTAS SEPENUHNYA.**
 

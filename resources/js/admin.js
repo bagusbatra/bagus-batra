@@ -1,9 +1,14 @@
 /* ------------------------------------------------------------------ *
- * Admin-only Alpine components. Only referenced from views under
- * resources/views/admin/**, but bundled in the shared app.js entry
- * (same Vite entry as the public site — harmless no-op elsewhere).
+ * Admin entry point (Iterasi 13 — Fase 3: pemisahan bundle publik vs
+ * admin). Mandiri: Alpine core + reveal-on-scroll (admin layout &
+ * halaman login memakai x-data="revealOnScroll", lihat reveal.js) +
+ * helper CRUD admin di bawah ini. TIDAK mengimpor ./portfolio — dicek
+ * (grep) tidak ada view admin manapun yang memakai $store.lang,
+ * $store.ui, atau appRoot()/aboutSection()/projectsSection()/dst, jadi
+ * seluruh logic publik itu tidak perlu ikut terkirim ke halaman admin.
  * ------------------------------------------------------------------ */
 import Alpine from 'alpinejs';
+import './reveal';
 
 /**
  * Pill switch on the "Pengaturan Section" page — auto-saves via PATCH
@@ -55,3 +60,7 @@ Alpine.data('sectionToggle', (id, initialActive) => ({
         this.feedbackTimer = setTimeout(() => { this.feedback = null; }, 2000);
     },
 }));
+
+window.Alpine = Alpine;
+
+Alpine.start();
