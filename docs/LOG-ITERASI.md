@@ -29,6 +29,44 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 3 — Skills / About (selesai: 2026-08-23)
+Status: Selesai
+
+### Ringkasan
+Menu "About & Skills" (placeholder sejak Iterasi 0) sekarang CRUD penuh untuk tabel `skills` — dipakai grid "Tech Stack & Skills Matrix" di section About halaman publik. Form skill: kategori (dropdown dibatasi ke 4 nilai yang benar-benar dipakai filter pill publik: frontend/backend/devops/tools), level 0-100 lewat slider **dan** input angka yang saling sinkron via Alpine (`x-model.number`), dropdown ikon dibatasi ke 12 ikon yang benar-benar didukung `x-icon` (identik dengan `$skillIconMap` di `about.blade.php`), dan reorder naik/turun (pola sama seperti Social Links di Iterasi 2). Karena `PortfolioController@index` sudah mengambil `$skills` dari `Skill::orderBy('sort_order')->get()` sejak sebelum Fase 1 dimulai (bukan dari config), CRUD ini langsung tersambung ke halaman publik tanpa perlu perubahan apa pun di controller publik atau partial `about.blade.php`.
+
+### File/area utama yang berubah
+- `app/Http/Controllers/Admin/SkillController.php` (baru) — CRUD penuh + `move()` (swap `sort_order` dgn tetangga, identik pola dgn `SocialLinkController@move` Iterasi 2).
+- `routes/admin.php` — placeholder `about-skills` dihapus dari `$placeholders`; ditambah 7 route `admin.about-skills*` (index/create/store/edit/update/destroy/move).
+- `resources/views/admin/skills/index.blade.php` (baru) — list dgn badge kategori berwarna, tombol naik/turun, modal konfirmasi hapus (pola identik Iterasi 2). Ditambah banner info yang menjelaskan status 4 kartu "Prinsip Kerja" (lihat Catatan di bawah).
+- `resources/views/admin/skills/form.blade.php` (baru) — dipakai bersama create & edit; slider `<input type="range">` dan `<input type="number">` sama-sama `x-model.number="level"` sehingga selalu sinkron dua arah, progress bar preview live di bawahnya mengikuti `:style="width: ${level}%"`.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru (skema `skills` sudah lengkap sejak sebelum Fase 1).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+- `php artisan route:list --path=admin/about-skills` — 7 route bersih, tidak ada placeholder tersisa.
+- `npm run build` — sukses.
+- End-to-end via `php artisan serve` + `curl` (cookie jar, login admin):
+  - `GET /admin/about-skills` → 200, 12 skill seed tampil (dicek jumlah via `Skill::count()` = 12, cocok).
+  - `POST /admin/about-skills` menambah "Skill Test Unik Rust" (kategori backend) → 302; `GET /` sesudahnya mengandung teks itu (1 match) — bukti tambah skill langsung tampil di grid.
+  - `PUT /admin/about-skills/{id}` mengubah nama jadi "...EDITED" & level 88 → 302; `GET /` mengandung nama baru (1 match) — bukti edit langsung tampil.
+  - Filter pill kategori (`skill-filter-backend`, dll di halaman publik) dicek masih ada & utuh sebelum dan sesudah operasi CRUD — tidak rusak.
+  - `DELETE /admin/about-skills/{id}` untuk skill test → 302; `Skill::count()` kembali 12; `GET /` → 0 match untuk nama skill test — bukti hapus langsung hilang.
+  - `PATCH /admin/about-skills/{id}/move` (`direction=up`) pada skill urutan ke-2 → `sort_order` bertukar dgn skill pertama, dicek via `tinker`; dikembalikan manual ke urutan semula (`sort_order` 0/1) setelah verifikasi supaya urutan Skills di halaman publik tidak berubah dari baseline seed.
+  - `storage/logs/laravel.log` dicek — kosong, tidak ada exception baru.
+  - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
+
+### Commit
+- (diisi setelah commit dibuat)
+
+### Catatan untuk review
+- **Keputusan 4 kartu "Prinsip Kerja"**: sesuai pertanyaan terbuka di `RENCANA-PENGEMBANGAN.md` bagian 8 ("dikonfirmasi di Iterasi 3"), diputuskan **tetap statis** (opsi default yang disebutkan di rencana), tidak dijadikan CRUD. Alasan: konten itu (Performance-First, Aksesibilitas & WAI-ARIA, Arsitektur Modular, Micro-Interactions) adalah pernyataan filosofi kerja yang jarang berubah dan bukan "data" dalam pengertian CRUD biasa (tidak ada listing/kategori/relasi) — membuatnya jadi tabel terpisah akan menambah kompleksitas skema untuk 4 baris yang praktis statis. Ditambahkan banner info di halaman admin About & Skills yang menjelaskan status ini secara eksplisit ke pengguna admin, supaya tidak membingungkan kenapa 4 kartu itu tidak muncul di CRUD. Bisa direvisit di iterasi lanjutan bila diminta.
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` diupdate hanya di bagian "Riwayat perubahan skema".
+
+---
+
 ## Iterasi 2 — Profil & Hero, Social Links (selesai: 2026-08-23)
 Status: Selesai
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PlaceholderController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SectionSettingController;
+use App\Http\Controllers\Admin\SkillController;
 use App\Http\Controllers\Admin\SocialLinkController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,11 +47,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('social-links/{socialLink}', [SocialLinkController::class, 'destroy'])->name('social-links.destroy');
         Route::patch('social-links/{socialLink}/move', [SocialLinkController::class, 'move'])->name('social-links.move');
 
+        Route::get('about-skills', [SkillController::class, 'index'])->name('about-skills');
+        Route::get('about-skills/create', [SkillController::class, 'create'])->name('about-skills.create');
+        Route::post('about-skills', [SkillController::class, 'store'])->name('about-skills.store');
+        Route::get('about-skills/{skill}/edit', [SkillController::class, 'edit'])->name('about-skills.edit');
+        Route::put('about-skills/{skill}', [SkillController::class, 'update'])->name('about-skills.update');
+        Route::delete('about-skills/{skill}', [SkillController::class, 'destroy'])->name('about-skills.destroy');
+        Route::patch('about-skills/{skill}/move', [SkillController::class, 'move'])->name('about-skills.move');
+
         // Menus without a real feature yet — placeholder pages so the
         // sidebar never 404s while making the owning iteration explicit.
         // [route name suffix => [menu title, "Segera Hadir" note]]
         $placeholders = [
-            'about-skills' => ['About & Skills', 'Segera hadir — bagian dari Iterasi 3'],
             'projects' => ['Projects', 'Segera hadir — bagian dari Iterasi 4'],
             'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
             'experience' => ['Experience', 'Segera hadir — bagian dari Iterasi 5'],
