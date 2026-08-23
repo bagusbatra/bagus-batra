@@ -51,7 +51,6 @@
             @foreach ($projects as $project)
                 <article
                     data-reveal
-                    x-data="{ project: @js($project->toJs()) }"
                     x-show="category === 'All' || category === '{{ $project->category }}'"
                     x-transition
                     id="project-card-{{ $project->project_key }}"
@@ -100,15 +99,15 @@
                         </div>
 
                         <div class="pt-3 border-t border-slate-200/50 flex items-center justify-between">
-                            <button
+                            <a
                                 id="view-study-{{ $project->project_key }}"
-                                @click="$store.ui.openProject(project)"
-                                class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer py-1"
+                                href="{{ route('projects.show', $project) }}"
+                                class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 py-1"
                             >
                                 <span x-show="$store.lang.current === 'id'">Detail Case Study</span>
                                 <span x-show="$store.lang.current === 'en'" x-cloak>Case Study</span>
                                 <x-icon name="arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                            </button>
+                            </a>
 
                             <div class="flex items-center gap-1.5">
                                 @if ($project->github_url)

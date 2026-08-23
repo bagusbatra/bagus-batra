@@ -15,12 +15,14 @@ Alpine.store('lang', {
 
 /* ------------------------------------------------------------------ *
  * UI store — global modal / drawer / bookmark state shared across the
- * whole page (CV modal, project case-study modal, article reader modal).
+ * whole page (CV modal, article reader modal). Project case-study used to
+ * live here too (activeProject/activeProjectTab/openProject/closeProject)
+ * but that modal was retired in Iterasi 11 (Fase 2) in favour of a real
+ * page (/projects/{project_key}) — removed together with
+ * project-modal.blade.php so no dead store state/JS console errors remain.
  * ------------------------------------------------------------------ */
 Alpine.store('ui', {
     cvOpen: false,
-    activeProject: null,
-    activeProjectTab: 'overview',
     activeArticle: null,
     bookmarks: JSON.parse(localStorage.getItem('blog_bookmarks') || '[]'),
 
@@ -37,16 +39,6 @@ Alpine.store('ui', {
     },
     closeCv() {
         this.cvOpen = false;
-        this.unlockScroll();
-    },
-
-    openProject(project) {
-        this.activeProject = project;
-        this.activeProjectTab = 'overview';
-        this.lockScroll();
-    },
-    closeProject() {
-        this.activeProject = null;
         this.unlockScroll();
     },
 

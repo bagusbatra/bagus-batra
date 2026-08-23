@@ -37,32 +37,20 @@ class Project extends Model
         'featured' => 'boolean',
     ];
 
-    /**
-     * Convert to the camelCase shape used by the front-end (Alpine) modal templates,
-     * mirroring the original TypeScript `Project` interface.
-     */
-    public function toJs(): array
-    {
-        return [
-            'id' => $this->project_key,
-            'title' => $this->title,
-            'tagline' => $this->tagline,
-            'description' => $this->description,
-            'longDescription' => $this->long_description,
-            'category' => $this->category,
-            'role' => $this->role,
-            'timeline' => $this->timeline,
-            'client' => $this->client,
-            'image' => $this->image,
-            'tags' => $this->tags,
-            'metrics' => $this->metrics,
-            'highlights' => $this->highlights,
-            'techStack' => $this->tech_stack,
-            'demoUrl' => $this->demo_url,
-            'githubUrl' => $this->github_url,
-            'featured' => $this->featured,
-            'colorGradient' => $this->color_gradient,
-            'accentColor' => $this->accent_color,
-        ];
-    }
+    // NOTE (Iterasi 11 / Fase 2): route-model-binding for the PUBLIC detail
+    // page uses project_key, not id — done via the explicit `{project:
+    // project_key}` syntax in routes/web.php, NOT via a getRouteKeyName()
+    // override here. An override would apply globally, which would break
+    // every ADMIN route (routes/admin.php uses plain `{project}` bound by
+    // numeric id, e.g. PUT /admin/projects/{project}) since implicit
+    // binding falls back to getRouteKeyName() too. Route-scoped binding
+    // keeps the two id schemes independent.
+
+    // NOTE (Iterasi 11 / Fase 2): the `toJs()` camelCase-shape helper that
+    // used to live here was removed — it only existed to @js()-embed a
+    // Project into the on-page case-study modal (project-modal.blade.php),
+    // which was retired in this iteration in favour of a real page
+    // (resources/views/projects/show.blade.php, server-rendered directly
+    // from the model). BlogPost::toJs() is unrelated and still used by the
+    // article reader modal, which stays out of Fase 2 scope.
 }

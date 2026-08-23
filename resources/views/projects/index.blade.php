@@ -4,11 +4,9 @@
     navbar/footer/ambient background/lang store/reveal-on-scroll identik
     tanpa duplikasi layout — lihat docs/RENCANA-PENGEMBANGAN.md #10.
 
-    NOTE (Iterasi 10): tombol "Detail Case Study" di kartu bawah masih
-    membuka modal lama ($store.ui.openProject) — sengaja belum diganti ke
-    link halaman detail supaya tidak ada state transisi yang rusak di
-    tengah iterasi. Diganti ke <a href="{{ route('projects.show', ...) }}">
-    sekaligus dengan pencabutan modal di Iterasi 11.
+    Tombol "Detail Case Study" adalah <a> biasa ke halaman
+    /projects/{project_key} (route projects.show) — modal case-study lama
+    dicabut penuh di Iterasi 11 (lihat project-modal.blade.php di riwayat git).
 --}}
 @extends('layouts.app')
 
@@ -84,7 +82,6 @@
                     @foreach ($projects as $project)
                         <article
                             data-reveal
-                            x-data="{ project: @js($project->toJs()) }"
                             x-show="category === 'All' || category === '{{ $project->category }}'"
                             x-transition
                             id="catalog-card-{{ $project->project_key }}"
@@ -133,15 +130,15 @@
                                 </div>
 
                                 <div class="pt-3 border-t border-slate-200/50 flex items-center justify-between">
-                                    <button
+                                    <a
                                         id="catalog-view-study-{{ $project->project_key }}"
-                                        @click="$store.ui.openProject(project)"
-                                        class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer py-1"
+                                        href="{{ route('projects.show', $project) }}"
+                                        class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 py-1"
                                     >
                                         <span x-show="$store.lang.current === 'id'">Detail Case Study</span>
                                         <span x-show="$store.lang.current === 'en'" x-cloak>Case Study</span>
                                         <x-icon name="arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                                    </button>
+                                    </a>
 
                                     <div class="flex items-center gap-1.5">
                                         @if ($project->github_url)

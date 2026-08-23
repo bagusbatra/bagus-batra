@@ -79,8 +79,10 @@
 
     @include('portfolio.partials.footer')
 
+    {{-- project-modal.blade.php dicabut di Iterasi 11 (Fase 2) — case-study
+         project sekarang halaman sungguhan (/projects/{project_key}), bukan
+         modal. article-modal (Blog) TIDAK disentuh, tetap di luar scope Fase 2. --}}
     @include('portfolio.partials.cv-modal')
-    @include('portfolio.partials.project-modal')
     @include('portfolio.partials.article-modal')
 </body>
 </html>

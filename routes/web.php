@@ -13,5 +13,6 @@ Route::post('/contact', [ContactMessageController::class, 'store'])->name('conta
 // (bukan id), supaya URL rapi mis. /projects/lumina-saas — lihat
 // docs/RENCANA-PENGEMBANGAN.md #10.
 Route::get('/projects', [ProjectPageController::class, 'index'])->name('projects.index');
+Route::get('/projects/{project:project_key}', [ProjectPageController::class, 'show'])->name('projects.show');
 
 require __DIR__.'/admin.php';
