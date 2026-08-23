@@ -1,6 +1,6 @@
 # Rencana Pengembangan — Admin Panel & Perapian Data
 
-Status: **Iterasi 0–9 selesai & terverifikasi — Fase 1 TUNTAS SEPENUHNYA.** Dikerjakan berurutan secara otomatis tanpa jeda review per-iterasi sesuai instruksi user (jeda review antar-iterasi yang dijelaskan di bagian 2 ditangguhkan untuk rentang ini) — rincian tiap iterasi ada di `LOG-ITERASI.md`, perubahan skema di `ERD.md`. Iterasi 9 (Polish & QA lintas admin) sudah dikerjakan: audit konsistensi/responsif/animasi selesai, regresi penuh publik+admin hijau, README diperbarui. Siap lanjut ke **Fase 2** (perapian data index/projects/detail project) — detail Fase 2 akan disusun terpisah nanti, belum dimulai.
+Status: **Iterasi 0–12 selesai & terverifikasi — Fase 1 DAN Fase 2 TUNTAS SEPENUHNYA.** Dikerjakan berurutan secara otomatis tanpa jeda review per-iterasi sesuai instruksi user (jeda review antar-iterasi yang dijelaskan di bagian 2 ditangguhkan untuk seluruh rentang Iterasi 0-12) — rincian tiap iterasi ada di `LOG-ITERASI.md`, perubahan skema di `ERD.md`. Fase 1 (Iterasi 0-9, admin panel CRUD lengkap) tuntas lebih dulu. Fase 2 (Iterasi 10-12, halaman Projects terpisah dari modal) menyusul: `/projects` (katalog lengkap + filter + pagination), `/projects/{project_key}` (halaman detail penuh menggantikan modal, dengan breadcrumb/related projects/meta SEO dinamis), section Projects di index jadi highlight (featured-only) dengan CTA ke katalog, modal `project-modal.blade.php` dicabut total (modal Blog tidak disentuh), dan audit akhir data/regresi lintas ketiga jenis halaman publik. Tidak ada perubahan skema database di Fase 2. Tidak ada pekerjaan lanjutan yang direncanakan setelah ini — proyek dianggap selesai sesuai scope yang diminta.
 Dibuat: 2026-08-23
 
 ## 1. Tujuan
@@ -139,7 +139,7 @@ Setiap iterasi ditutup dengan: migrasi dijalankan bersih, seeder (bila ada) jala
 
 # Fase 2 — Halaman Projects Terpisah & Perapian Data
 
-Status: **Draft — dieksekusi otomatis berurutan (Iterasi 10→12) sesuai instruksi user "lanjut ke fase 2", tanpa jeda review per-iterasi**, mengikuti pola yang sama seperti Fase 1. Ditulis: 2026-08-23, setelah Fase 1 (Iterasi 0-9) tuntas.
+Status: **Selesai — Iterasi 10, 11, 12 dieksekusi otomatis berurutan sesuai instruksi user, tanpa jeda review per-iterasi**, mengikuti pola yang sama seperti Fase 1. Ditulis: 2026-08-23, setelah Fase 1 (Iterasi 0-9) tuntas. Dikerjakan & diverifikasi: 2026-08-23 — lihat `LOG-ITERASI.md` untuk detail lengkap tiap iterasi.
 
 ## 9. Tujuan Fase 2
 

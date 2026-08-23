@@ -29,6 +29,140 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 12 — Merapikan Data & Audit Akhir (selesai: 2026-08-23)
+Status: Selesai — **Fase 2 (Iterasi 10-12) TUNTAS SEPENUHNYA.**
+
+### Ringkasan
+Iterasi audit & perbaikan (bukan fitur baru), penutup Fase 2 — pola sama dengan Iterasi 9 di penutup Fase 1. Audit dijalankan terhadap ketiga jenis halaman publik Projects yang sekarang ada (index highlight di `/`, katalog `/projects`, detail `/projects/{key}`) sesuai baris "Data cleanup (index)" di `RENCANA-PENGEMBANGAN.md` bagian 10. Temuan: sebagian besar item audit **sudah benar sejak Iterasi 10-11** (ditulis sekaligus saat membuat halaman, bukan ditambal belakangan) — field opsional (`client`, `demo_url`, `github_url`) sudah di-guard dengan `@if`/fallback sejak awal, badge kategori & line-clamp sudah konsisten dengan pola index lama. Yang benar-benar baru ditambahkan di iterasi ini: fallback `onerror` untuk gambar rusak (belum ada sebelumnya di kartu manapun) dan quick-win link admin ke halaman publik.
+
+**1) Audit isi data** — dicek manual field-per-field terhadap 5 project di database saat ini (`lumina-saas`, `aurora-commerce`, `zenith-design-system`, `pulse-ai-workspace`, `fast-state-npm`): 2 project (`pulse-ai-workspace`, `fast-state-npm`) punya `client = null` — halaman detail (`projects/show.blade.php`, ditulis di Iterasi 11) sudah menampilkan fallback `{{ $project->client ?: 'Open Project' }}` (meniru fallback yang sama persis dipakai modal lama), dicek via curl **tidak ada teks "null" bocor ke HTML manapun** (grep `>null<` di halaman index/katalog/detail — nihil). Semua 5 project punya `demo_url`/`github_url` terisi sehingga tombol terkait selalu tampil, tapi kode `@if ($project->demo_url)`/`@if ($project->github_url)` tetap ada di semua tempat (kartu index, kartu katalog, footer strip detail, tab Preview detail) untuk kasus field kosong di masa depan — **dicek eksplisit ini sudah benar sejak awal Iterasi 10-11**, bukan baru diperbaiki sekarang.
+**2) Gambar broken** — ditambahkan atribut `onerror="this.onerror=null;this.src='https://placehold.co/...'"` (fallback ke placeholder abu-abu via placehold.co, sengaja bukan sistem upload-check yang rumit sesuai batasan tugas) di **setiap** `<img>` project publik: kartu index highlight, kartu katalog `/projects`, banner hero halaman detail, dan kartu "Proyek Lainnya" — 4 lokasi, masing-masing placeholder ukuran sesuai konteks (800x600 untuk kartu, 1200x800 untuk banner besar, 600x400 untuk related card kecil).
+**3) Line-clamp/truncation** — dicek terhadap konten terpanjang yang benar-benar ada sekarang: `description` terpanjang 139 karakter (project `pulse-ai-workspace`), `long_description` terpanjang 231 karakter — keduanya masih rapi di `line-clamp-2` (kartu) dan tanpa clamp (paragraf penuh di tab Overview halaman detail, sengaja tidak diclamp karena itu memang halaman detail penuh, bukan preview kartu — sama seperti modal lama). Tidak ditemukan konten yang overflow/perlu tambahan clamp.
+**4) Badge kategori** — 5 kategori di database (`Full-Stack`, `Frontend`, `UI/UX & Systems`, `Open Source`, `AI & Tools`) semuanya Title Case konsisten, sama persis dengan konstanta `ProjectController::CATEGORIES` yang dipakai dropdown admin — tidak ada normalisasi tambahan yang diperlukan.
+
+**5) Section toggle vs halaman Projects** — diverifikasi eksplisit sesuai instruksi: toggle section `projects` di admin (`PATCH admin/section-settings/{id}/toggle`) dimatikan → `GET /` kehilangan `id="projects"` (0 match, section highlight hilang) **TAPI** `GET /projects` dan `GET /projects/lumina-saas` tetap `200` tanpa perubahan apa pun. Toggle dikembalikan aktif setelah verifikasi (state akhir sama seperti awal: 9/9 section aktif).
+
+**6) Regresi penuh** — dijalankan via `php artisan serve` + `curl` (server dimatikan sebelum & sesudah setiap sesi verifikasi, `laravel.log` dikosongkan sebelum tiap sesi & dicek bersih sesudahnya):
+- `GET /` → 200. `GET /projects` → 200, mengandung 5 kartu (`catalog-card-*`), 48/43 elemen `x-show="$store.lang.current === 'id'/'en'"` (toggle bahasa terpasang konsisten), 8 elemen `[data-reveal]`.
+- `GET /projects/{key}` untuk **SETIAP** project di database (di-loop otomatis dari `Project::pluck('project_key')`, bukan daftar hardcode) → 5/5 sukses 200, tidak ada 404/500. `GET /projects/does-not-exist` (key tak dikenal) → 404 (route-model-binding bekerja benar). Halaman detail: 46/41 elemen lang-toggle, 5 elemen `[data-reveal]`, breadcrumb + 3 tab (`tab-overview`/`tab-architecture`/`tab-preview`) semuanya ada, `og:image` terisi URL gambar project yang benar, related projects (`Proyek Lainnya`) mengecualikan project yang sedang dibuka dengan benar (dicek utk `lumina-saas`: 3 related-nya adalah `aurora-commerce`/`pulse-ai-workspace`/`zenith-design-system`, TIDAK termasuk `lumina-saas` sendiri).
+- Admin CRUD Projects (Iterasi 4 lama) dicek tetap sinkron: login → 200/302 seperti biasa, `GET /admin/projects` (list) → 200, `GET /admin/projects/1/edit` → 200, `GET /admin/projects/create` → 200 — tidak ada regresi dari perubahan Iterasi 10-11 (route-scoped binding by `project_key` di publik tidak bentrok dengan binding by `id` di admin, lihat catatan Iterasi 11).
+- Responsif: dicek class Tailwind di `resources/views/projects/index.blade.php` & `show.blade.php` — breakpoint (`sm:`/`md:`/`lg:`) konsisten dengan pola yang sudah dipakai `portfolio/partials/projects.blade.php` (grid `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`), tidak ada breakpoint baru yang menyimpang.
+
+### File/area utama yang berubah
+- `resources/views/projects/index.blade.php`, `resources/views/projects/show.blade.php` — tambah `onerror` fallback placeholder di setiap `<img>` project (4 lokasi total termasuk `portfolio/partials/projects.blade.php` yang sudah dapat perbaikan sama di Iterasi 10).
+- `resources/views/admin/projects/form.blade.php` — tambah tombol "Lihat di Halaman Publik" (`target="_blank"`, hanya muncul saat `$project->exists`, mengarah `route('projects.show', $project)`) di header form edit.
+- `resources/views/admin/projects/index.blade.php` — tambah ikon `external-link` per baris list, mengarah ke halaman publik project tersebut (tab baru), diletakkan sebelum ikon Edit yang sudah ada.
+- `README.md` — dokumentasikan `ProjectPageController`, route `/projects` & `/projects/{project_key}`, view `resources/views/projects/*`, update deskripsi modal (project-modal sudah dicabut Iterasi 11, article-modal tetap dipakai Blog).
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru (Fase 2 murni halaman/routing, tidak ada perubahan skema — sesuai prediksi di `RENCANA-PENGEMBANGAN.md` bagian 10).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+- `npm run build` — sukses, tidak ada error.
+- Lihat poin 5 & 6 di atas (Ringkasan) untuk detail lengkap end-to-end via `php artisan serve` + `curl`.
+- `storage/logs/laravel.log` dicek bersih (0 baris) di akhir setiap sesi verifikasi sepanjang iterasi ini.
+- Server `php artisan serve` dimatikan setelah setiap sesi verifikasi (dikonfirmasi request berikutnya gagal connect / `000`).
+
+### Commit
+- `2cd0fbc` — Iterasi 12: audit & perapian data halaman Projects
+
+### Catatan untuk review
+- **Fase 2 (Iterasi 10-12) sekarang TUNTAS SEPENUHNYA.** Halaman `/projects` (katalog) dan `/projects/{project_key}` (detail) sudah production-ready secara fungsional: filter kategori, pagination (infra terpasang meski baru 5 data), toggle bahasa, reveal-on-scroll, SEO meta dinamis, related projects, dan fallback data yang rapi untuk field opsional/gambar rusak.
+- Tidak ada blocker atau penyimpangan besar dari rencana di seluruh Fase 2 — satu-satunya bug yang ditemukan (partial `cv-modal.blade.php` mengasumsikan `$personalInfo`/dst selalu ada dari `PortfolioController`) ditemukan **dan diperbaiki di Iterasi 10 sendiri**, sebelum sempat jadi masalah lintas iterasi.
+- Keputusan "filter kategori di `/projects` beroperasi client-side (Alpine `x-show`) di dalam halaman yang sudah dipaginasi server-side" (bukan filter kategori ikut jadi query param yang mempengaruhi pagination) dipertahankan dari Iterasi 10 — cukup untuk 5 data saat ini, infra `paginate()` sudah terpasang untuk kapan pun datanya bertambah melebihi `perPage` (12), tapi interaksi filter+pagination lintas halaman belum diuji secara nyata karena belum ada datanya. Dicatat sebagai area yang perlu ditinjau ulang bila jumlah project sudah cukup banyak untuk benar-benar melewati satu halaman pagination.
+- Tidak ada perubahan skema database di seluruh Fase 2 — `docs/ERD.md` **sengaja tidak ditambah entri riwayat baru** (instruksi eksplisit: jangan tambah entri riwayat kosong bila memang tidak ada perubahan skema).
+
+---
+
+## Iterasi 11 — Halaman Detail Project & Pencabutan Modal (selesai: 2026-08-23)
+Status: Selesai
+
+### Ringkasan
+Halaman detail `/projects/{project_key}` (route `projects.show`) dibangun dengan mereplikasi penuh konten 3 tab modal lama (`project-modal.blade.php`: Overview & Solusi / Arsitektur Stack / Simulasi Interaktif) sebagai halaman utuh — bedanya, konten sekarang server-rendered langsung dari `$project` (Blade `@foreach`/`@if` biasa), bukan lagi lewat `$store.ui.activeProject` + `@js()` embed JSON; tab tetap interaktif tanpa reload lewat Alpine lokal (`x-data="{ tab: 'overview' }"` di scope halaman, bukan store global). Ditambah 3 elemen baru yang tidak ada di modal: breadcrumb (Beranda → Projects → judul), tombol "Kembali ke Semua Proyek", dan blok "Proyek Lainnya" (2-3 project terkait). Modal case-study lama dicabut penuh: file dihapus, `@include`-nya di layout dihapus, dan seluruh state/method terkait (`activeProject`, `activeProjectTab`, `openProject`, `closeProject`) dibuang dari `$store.ui` di `portfolio.js` — modal Blog (`article-modal.blade.php`, `$store.ui.activeArticle`/`openArticle`/`closeArticle`) sama sekali tidak disentuh, sesuai batasan scope Fase 2.
+
+Route pakai **route-scoped** binding `{project:project_key}` (bukan `getRouteKeyName()` global di model `Project`) — keputusan disengaja setelah disadari bahwa override `getRouteKeyName()` akan berlaku global untuk SEMUA implicit binding `{project}`, termasuk 4 route admin di `routes/admin.php` (`PUT/DELETE/PATCH admin/projects/{project}`) yang mem-bind by `id` numerik. Kalau dipaksa override, admin CRUD akan langsung 404 karena mencoba mencari `project_key = '3'` alih-alih `id = 3`. Ditemukan & dihindari sebelum sempat ditulis ke kode (dicek dulu dengan membaca `routes/admin.php`), bukan ditemukan lewat bug di runtime — dicatat di sini karena ini keputusan arsitektur penting yang menjelaskan kenapa dua mekanisme binding (route-scoped vs model-level) dipilih.
+
+### File/area utama yang berubah
+- `routes/web.php` — route baru `GET /projects/{project:project_key}` (`projects.show`).
+- `app/Http/Controllers/ProjectPageController.php` — method `show(Project $project)` baru: query related projects (kategori sama dulu, exclude project yang sedang dibuka, fallback project lain bila kurang dari 3, max 3 total — sengaja simpel tanpa algoritma skor, sesuai batasan Fase 2 bagian 12).
+- `resources/views/projects/show.blade.php` (baru) — halaman detail penuh: hero banner, 3 tab (Overview/Architecture/Preview), footer action strip (tags + tombol GitHub/demo ber-`@if`), breadcrumb, tombol kembali, blok Proyek Lainnya. Meta SEO dinamis lewat `@section('meta_title'|'meta_description'|'meta_image')` yang infrastrukturnya disiapkan di layout pada Iterasi 10.
+- `resources/views/portfolio/partials/project-modal.blade.php` — **dihapus** (`git rm`).
+- `resources/views/layouts/app.blade.php` — `@include('portfolio.partials.project-modal')` dihapus (cv-modal & article-modal tetap).
+- `resources/js/portfolio.js` — `$store.ui.activeProject`, `activeProjectTab`, `openProject()`, `closeProject()` dihapus; `activeArticle`/`openArticle()`/`closeArticle()` (Blog) tidak diubah.
+- `resources/views/portfolio/partials/projects.blade.php`, `resources/views/projects/index.blade.php` — tombol "Detail Case Study" di tiap kartu diubah dari `<button @click="$store.ui.openProject(project)">` jadi `<a href="{{ route('projects.show', $project) }}">` biasa; wrapper `x-data="{ project: @js($project->toJs()) }"` yang menumpang di tiap `<article>` kartu ikut dibuang karena sudah tidak ada konsumennya.
+- `app/Models/Project.php` — method `toJs()` dihapus (dead code — hanya dipakai modal yang baru dicabut; `BlogPost::toJs()` tidak disentuh, masih dipakai `article-modal`). Ditambah komentar menjelaskan kenapa `getRouteKeyName()` **sengaja tidak** dioverride di sini (lihat Ringkasan).
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru.
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+- `npm run build` — sukses.
+- `php artisan route:list --path=projects` — 9 route (7 admin lama + `projects.index` + `projects.show` baru), bersih.
+- End-to-end via `php artisan serve` + `curl`:
+  - `GET /projects/{key}` untuk kelima project (`lumina-saas`, `aurora-commerce`, `zenith-design-system`, `pulse-ai-workspace`, `fast-state-npm`) → 200 semua, `<title>` masing-masing sesuai judul project + `" — Studi Kasus Proyek | Bagus Batra"`.
+  - `GET /projects/does-not-exist` → 404 (route-model-binding menolak key yang tidak ada, sesuai perilaku default Laravel).
+  - Breadcrumb (`aria-label="Breadcrumb"`) ada 1x, ketiga tab (`id="tab-overview"`/`tab-architecture`/`tab-preview"`) ada, `og:image` terisi URL gambar project yang benar, related projects untuk `lumina-saas` menghasilkan `aurora-commerce`/`pulse-ai-workspace`/`zenith-design-system` (benar, exclude dirinya sendiri).
+  - Field `client = null` (project `pulse-ai-workspace`) menampilkan fallback "Open Project" di tab Overview, bukan teks kosong/"null".
+  - `GET /` (index) & `GET /projects` (katalog) dicek ulang: tombol "Detail Case Study" sekarang mengarah ke `/projects/{key}` yang benar (dicek `href` lewat grep), bukan lagi memicu modal.
+  - Login admin → `GET /admin/dashboard`, `GET /admin/projects`, `GET /admin/projects/1/edit` semuanya tetap 200 — konfirmasi route-scoped binding tidak merusak binding by `id` di admin (lihat catatan arsitektur di Ringkasan).
+  - Grep menyeluruh `activeProject|openProject|closeProject|project-modal` di seluruh `resources/` setelah semua perubahan: hanya tersisa di komentar penjelas (bukan kode aktif) — dikonfirmasi tidak ada dead code/reference yang akan menyebabkan console error.
+  - `storage/logs/laravel.log` dicek bersih (0 baris) di akhir sesi.
+  - Server dimatikan setelah verifikasi (dikonfirmasi request berikutnya gagal connect).
+
+### Commit
+- `612224e` — Iterasi 11: halaman detail Project & pencabutan modal case-study
+
+### Catatan untuk review
+- Keputusan route-scoped binding (`{project:project_key}`) vs `getRouteKeyName()` override adalah keputusan teknis paling penting di iterasi ini — lihat penjelasan lengkap di Ringkasan. Ini murni detail implementasi, tidak mengubah perilaku yang terlihat user (URL tetap `/projects/lumina-saas`, bukan `/projects/3`).
+- Tab "Simulasi Interaktif" (Preview) di halaman detail mereplikasi persis tampilan sandbox palsu yang sudah ada di modal lama (bukan live preview sungguhan) — sesuai konten asli, tidak diperluas jadi fitur baru karena di luar scope Fase 2 (lihat batasan bagian 12: bukan comment system/algoritma canggih).
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` tidak diupdate.
+
+---
+
+## Iterasi 10 — Routing & Halaman Listing Projects (selesai: 2026-08-23)
+Status: Selesai
+
+### Ringkasan
+Awal Fase 2. Halaman katalog `/projects` (route `projects.index`) dibangun via controller publik baru `ProjectPageController` (dipisah dari `PortfolioController` karena merender view yang sama sekali berbeda — `resources/views/projects/*`, bukan `resources/views/portfolio/*` — dan punya concern controller sendiri yang tidak cocok ditumpuk ke method `index()` `PortfolioController` yang sudah ada). View-nya `extends('layouts.app')` — layout publik yang sama persis dipakai `/` — supaya navbar/footer/ambient background/`$store.lang`/reveal-on-scroll identik tanpa duplikasi kode layout. Grid kartu memakai markup yang sama persis dengan kartu di section Projects index (hanya ganti sumber data jadi SEMUA project, bukan subset featured), filter kategori tetap Alpine client-side (pola sama seperti `projects.blade.php`), dan `Project::orderBy('sort_order')->paginate(12)` dipasang sebagai infrastruktur pagination meski baru ada 5 project (jadi belum benar-benar terlihat kecuali datanya bertambah > 12).
+
+Section Projects di halaman index sekarang jadi **highlight**: `PortfolioController@index` memfilter ke `featured = true`, fallback ke 3 project pertama by `sort_order` kalau belum ada satupun yang featured (kondisi saat ini: 3 dari 5 project memang sudah `featured = true`, jadi fallback belum pernah teraktivasi dengan data nyata, tapi logic-nya tetap diverifikasi lewat pembacaan kode & akan otomatis aktif kalau suatu saat semua project di-set `featured = false`). Tombol "Detail Case Study" di kedua halaman (index highlight & katalog `/projects`) **sengaja belum diubah** — masih memicu modal lama (`$store.ui.openProject`) — supaya tidak ada state transisi yang rusak di tengah iterasi; diganti sekaligus dengan pencabutan modal di Iterasi 11.
+
+**Bug ditemukan & diperbaiki saat verifikasi (bukan di rencana awal)**: `GET /projects` sempat crash 500 saat pertama dicoba. Root cause: `cv-modal.blade.php` (partial structural, di-`@include` tanpa syarat dari `layouts/app.blade.php`) mengasumsikan `$personalInfo`/`$skills`/`$experiences` selalu tersedia — asumsi yang selama ini kebetulan selalu benar karena satu-satunya controller yang merender layout ini adalah `PortfolioController`, yang memang selalu mengirim ketiga variabel itu. `ProjectPageController@index` adalah controller PERTAMA yang merender `layouts.app` tanpa mengirim variabel-variabel itu (karena memang tidak butuh untuk kontennya sendiri), sehingga Blade melempar "Undefined variable $personalInfo". Diperbaiki dengan membuat partial itu self-contained: `$personalInfo = $personalInfo ?? \App\Models\SiteProfile::current()->toArray();` (dan serupa untuk `$skills`/`$experiences`) di awal file, memakai null-coalescing supaya tidak override data yang memang sudah dikirim `PortfolioController` maupun menambah query duplikat pada halaman `/` (variabel sudah ada, fallback tidak pernah dieksekusi di sana).
+
+### File/area utama yang berubah
+- `app/Http/Controllers/ProjectPageController.php` (baru) — method `index()`: `Project::orderBy('sort_order')->paginate(12)`, kirim ke view `projects.index`.
+- `app/Http/Controllers/PortfolioController.php` — `$projects` yang dikirim ke `portfolio.index` sekarang subset featured (fallback 3 pertama), bukan lagi seluruh project.
+- `routes/web.php` — route baru `GET /projects` (`projects.index`).
+- `resources/views/projects/index.blade.php` (baru) — halaman katalog: back-link ke `/`, judul + jumlah total project, filter kategori (`x-data="projectsSection()"`, dipakai ulang dari `portfolio.js`, tidak ada komponen Alpine baru yang perlu ditulis), grid kartu (markup sama dengan `projects.blade.php`), pagination `{{ $projects->links() }}` (muncul kondisional lewat `hasPages()` — belum terlihat sekarang karena baru 5 data).
+- `resources/views/portfolio/partials/projects.blade.php` — tambah tombol CTA "Lihat Semua Proyek" (link ke `route('projects.index')`) di bawah grid; tambah atribut `onerror` fallback placeholder di `<img>` kartu (perbaikan kecil sekalian, bukan diminta eksplisit di iterasi ini tapi murah untuk dilakukan sekarang).
+- `resources/views/layouts/app.blade.php` — `<title>`/`meta description`/`og:title`/`og:description` diubah dari hardcoded jadi dinamis lewat `@hasSection('meta_title')`/`@yield('meta_title')` dkk dengan fallback ke nilai lama persis (tidak ada regresi visual di halaman manapun yang belum set section ini); tambah `<meta property="og:image">` kondisional (`@hasSection('meta_image')`) — infrastruktur ini disiapkan di sini supaya siap dipakai halaman detail Project di Iterasi 11.
+- `resources/views/portfolio/partials/cv-modal.blade.php` — perbaikan bug 500 (lihat Ringkasan): partial menghitung fallback `$personalInfo`/`$skills`/`$experiences` sendiri via null-coalescing kalau variabel itu belum dikirim controller.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru (sesuai prediksi rencana — Fase 2 murni halaman/routing, bukan skema data baru).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+- `npm run build` — sukses.
+- `php artisan route:list --path=projects` — route `projects.index` terdaftar bersih.
+- End-to-end via `php artisan serve` + `curl`:
+  - `GET /` → 200; section Projects index hanya menampilkan 3 kartu featured (`project-card-lumina-saas`/`aurora-commerce`/`zenith-design-system`, cocok dengan 3 project yang memang `featured = true` di database saat ini), CTA "Lihat Semua Proyek" ada 1x dengan `href` mengarah ke `/projects`.
+  - `GET /projects` → sempat 500 (lihat Ringkasan — bug `cv-modal.blade.php`), setelah diperbaiki → 200, menampilkan seluruh 5 `catalog-card-*` (semua project, bukan cuma featured), `<title>Semua Proyek — Bagus Batra</title>` (meta dinamis berfungsi).
+  - `storage/logs/laravel.log` dicek bersih (0 baris) setelah perbaikan bug di atas dikonfirmasi tidak muncul lagi.
+  - Server `php artisan serve` dimatikan setelah verifikasi (dikonfirmasi request berikutnya gagal connect, `000`).
+
+### Commit
+- `80ab96b` — Iterasi 10: routing & halaman listing Projects
+
+### Catatan untuk review
+- Bug `cv-modal.blade.php` di atas adalah **temuan penting**: mengonfirmasi bahwa `layouts/app.blade.php` sebelum Fase 2 diam-diam berasumsi hanya `PortfolioController` yang akan pernah merendernya. Perbaikannya (fallback self-contained di partial, bukan memaksa `ProjectPageController` mengirim variabel yang tidak dibutuhkan kontennya sendiri) dipilih supaya partial structural benar-benar reusable oleh controller manapun di masa depan, bukan cuma tambal untuk kasus ini saja.
+- Keputusan nama controller `ProjectPageController` (bukan menambah method ke `PortfolioController`) — dipilih karena kedua controller merender pohon view yang sama sekali terpisah (`projects/*` vs `portfolio/*`) dan `ProjectPageController` akan terus tumbuh sendiri di Iterasi 11 (method `show()` + query related projects) — memisahkannya dari awal menghindari `PortfolioController` membengkak dengan concern yang tidak berhubungan dengan halaman `/`.
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` tidak diupdate (sesuai instruksi: tidak menambah entri riwayat kosong bila memang tidak ada perubahan skema).
+
+---
+
 ## Iterasi 9 — Polish & QA lintas admin (selesai: 2026-08-23)
 Status: Selesai — **Fase 1 (Iterasi 0-9) TUNTAS SEPENUHNYA.**
 
