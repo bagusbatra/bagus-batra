@@ -16,7 +16,19 @@ class PortfolioController extends Controller
     public function index()
     {
         $skills = Skill::orderBy('sort_order')->get();
-        $projects = Project::orderBy('sort_order')->get();
+
+        // Iterasi 10 (Fase 2): section Projects di index sekarang jadi
+        // highlight, bukan katalog lengkap (itu pindah ke halaman /projects,
+        // lihat ProjectPageController). Hanya project featured=true yang
+        // tampil; kalau belum ada satupun yang ditandai featured, fallback
+        // ke 3 project pertama berdasar sort_order supaya section ini tidak
+        // pernah kosong (lihat docs/RENCANA-PENGEMBANGAN.md #10).
+        $allProjects = Project::orderBy('sort_order')->get();
+        $projects = $allProjects->where('featured', true)->values();
+        if ($projects->isEmpty()) {
+            $projects = $allProjects->take(3)->values();
+        }
+
         $blogPosts = BlogPost::orderBy('sort_order')->get();
         $experiences = Experience::orderBy('sort_order')->get();
         $testimonials = Testimonial::orderBy('sort_order')->get();

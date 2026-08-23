@@ -1,3 +1,17 @@
+{{--
+    Iterasi 10 (Fase 2): this partial is included unconditionally from the
+    shared layout (`layouts.app`), which is now also rendered by controllers
+    other than PortfolioController (e.g. ProjectPageController for /projects).
+    Those controllers don't need $personalInfo/$skills/$experiences for their
+    own page content, so the partial computes safe fallbacks itself instead
+    of assuming every controller supplies them — keeps it self-contained
+    without forcing every future controller to duplicate this query.
+--}}
+@php
+    $personalInfo = $personalInfo ?? \App\Models\SiteProfile::current()->toArray();
+    $skills = $skills ?? \App\Models\Skill::orderBy('sort_order')->get();
+    $experiences = $experiences ?? \App\Models\Experience::orderBy('sort_order')->get();
+@endphp
 <div
     id="cv-modal-backdrop"
     x-show="$store.ui.cvOpen"

@@ -59,7 +59,12 @@
                 >
                     {{-- Project Image Banner --}}
                     <div class="relative h-48 sm:h-52 overflow-hidden bg-slate-100">
-                        <img src="{{ $project->image }}" alt="{{ $project->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img
+                        src="{{ $project->image }}"
+                        alt="{{ $project->title }}"
+                        onerror="this.onerror=null;this.src='https://placehold.co/800x600/e2e8f0/64748b?text=No+Image';"
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
 
                         <div class="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between">
@@ -121,6 +126,20 @@
                     </div>
                 </article>
             @endforeach
+        </div>
+
+        {{-- Iterasi 10 (Fase 2): section ini sekarang hanya highlight
+             (featured / fallback 3 pertama, lihat PortfolioController@index)
+             — CTA di bawah mengarah ke katalog lengkap /projects. --}}
+        <div data-reveal class="flex justify-center pt-2">
+            <a
+                href="{{ route('projects.index') }}"
+                class="group inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white font-bold text-sm shadow-md hover:shadow-indigo-500/25 transition-all duration-300 hover:scale-103 hover:-translate-y-0.5 active:scale-97"
+            >
+                <span x-show="$store.lang.current === 'id'">Lihat Semua Proyek</span>
+                <span x-show="$store.lang.current === 'en'" x-cloak>View All Projects</span>
+                <x-icon name="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </a>
         </div>
     </div>
 </section>

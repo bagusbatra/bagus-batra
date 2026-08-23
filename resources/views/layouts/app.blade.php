@@ -3,11 +3,21 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bagus Batra — Senior Web Developer & Technical Writer</title>
-    <meta name="description" content="Portfolio modern, clean, dan elegan untuk Senior Web Developer & Frontend Specialist. Menghadirkan solusi web berkinerja tinggi, UI intuitif, dan artikel teknologi terkini." />
-    <meta property="og:title" content="Bagus Batra — Senior Web Developer Portfolio" />
-    <meta property="og:description" content="Modern clean portfolio & tech blog for web development professional." />
+    {{--
+        Iterasi 11 (Fase 2): title/description/og:* jadi dinamis per halaman lewat
+        @section('meta_title'|'meta_description'|'meta_image') — dipakai oleh halaman
+        detail Project (resources/views/projects/show.blade.php) untuk SEO. Halaman
+        lain yang tidak set section ini otomatis jatuh ke default lama (tidak ada
+        regresi pada `/` atau halaman lain).
+    --}}
+    <title>@hasSection('meta_title')@yield('meta_title')@else Bagus Batra — Senior Web Developer & Technical Writer @endif</title>
+    <meta name="description" content="@hasSection('meta_description')@yield('meta_description')@else Portfolio modern, clean, dan elegan untuk Senior Web Developer & Frontend Specialist. Menghadirkan solusi web berkinerja tinggi, UI intuitif, dan artikel teknologi terkini. @endif" />
+    <meta property="og:title" content="@hasSection('meta_title')@yield('meta_title')@else Bagus Batra — Senior Web Developer Portfolio @endif" />
+    <meta property="og:description" content="@hasSection('meta_description')@yield('meta_description')@else Modern clean portfolio & tech blog for web development professional. @endif" />
     <meta property="og:type" content="website" />
+    @hasSection('meta_image')
+        <meta property="og:image" content="@yield('meta_image')" />
+    @endif
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
