@@ -16,7 +16,7 @@
             ['label' => 'Experience', 'value' => $stats['experiences'], 'icon' => 'briefcase', 'color' => 'emerald'],
             ['label' => 'Testimonials', 'value' => $stats['testimonials'], 'icon' => 'quote', 'color' => 'amber'],
             ['label' => 'Skills', 'value' => $stats['skills'], 'icon' => 'cpu', 'color' => 'purple'],
-            ['label' => 'Pesan Masuk', 'value' => $stats['contact_messages'], 'icon' => 'mail', 'color' => 'rose'],
+            ['label' => 'Pesan Belum Dibaca', 'value' => $stats['contact_messages'], 'icon' => 'mail', 'color' => 'rose'],
         ];
         $colorMap = [
             'indigo' => 'bg-indigo-50/80 text-indigo-600 border-indigo-100/60',

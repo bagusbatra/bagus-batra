@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExperienceController;
+use App\Http\Controllers\Admin\MessageController;
 use App\Http\Controllers\Admin\PlaceholderController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\ProjectController;
@@ -91,12 +92,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('testimonials/{testimonial}', [TestimonialController::class, 'destroy'])->name('testimonials.destroy');
         Route::patch('testimonials/{testimonial}/move', [TestimonialController::class, 'move'])->name('testimonials.move');
 
+        Route::get('messages', [MessageController::class, 'index'])->name('messages');
+        Route::get('messages/{message}', [MessageController::class, 'show'])->name('messages.show');
+        Route::delete('messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
+
         // Menus without a real feature yet — placeholder pages so the
         // sidebar never 404s while making the owning iteration explicit.
         // [route name suffix => [menu title, "Segera Hadir" note]]
         $placeholders = [
             'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
-            'messages' => ['Pesan Masuk', 'Segera hadir — bagian dari Iterasi 8'],
         ];
 
         foreach ($placeholders as $slug => [$title, $iterationNote]) {

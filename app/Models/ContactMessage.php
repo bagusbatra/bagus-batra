@@ -13,5 +13,10 @@ class ContactMessage extends Model
         'budget',
         'timeline',
         'message',
+        'is_read',
+    ];
+
+    protected $casts = [
+        'is_read' => 'boolean',
     ];
 }

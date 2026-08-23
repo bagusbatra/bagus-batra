@@ -115,7 +115,7 @@ erDiagram
         string budget
         string timeline
         text message
-        boolean is_read "[RENCANA] ditambah Iterasi 8"
+        boolean is_read "default false, ditambah Iterasi 8"
     }
 
     SITE_PROFILES {
@@ -166,10 +166,11 @@ erDiagram
     }
 ```
 
-> Catatan render: seluruh tabel di diagram di atas — `PROJECTS`, `BLOG_POSTS`, `EXPERIENCES`, `TESTIMONIALS`, `SKILLS`, `CONTACT_MESSAGES`, `USERS`, `SITE_PROFILES`, `SOCIAL_LINKS`, `SECTION_SETTINGS` — **sudah ada** di database (MySQL `bagus_batra_portfolio`) sejak Iterasi 0 selesai. Satu-satunya kolom yang masih berstatus `[RENCANA]` adalah `is_read` pada `CONTACT_MESSAGES`, dikerjakan di Iterasi 8.
+> Catatan render: seluruh tabel di diagram di atas — `PROJECTS`, `BLOG_POSTS`, `EXPERIENCES`, `TESTIMONIALS`, `SKILLS`, `CONTACT_MESSAGES`, `USERS`, `SITE_PROFILES`, `SOCIAL_LINKS`, `SECTION_SETTINGS` — **sudah ada** di database (MySQL `bagus_batra_portfolio`) dengan skema final Fase 1 (Iterasi 0-8 selesai). `CONTACT_MESSAGES.is_read` ditambahkan di Iterasi 8 — tidak ada lagi kolom berstatus `[RENCANA]`.
 
 ## Riwayat perubahan skema
 
+- **2026-08-23 (Iterasi 8)** — Kolom baru `is_read` (boolean, default `false`) ditambahkan ke `contact_messages` via migrasi `2026_08_23_060959_add_is_read_to_contact_messages_table.php`. Dipakai untuk status baca/belum-dibaca pesan kontak di menu admin "Pesan Masuk" — ditandai otomatis `true` saat admin membuka detail pesan.
 - **2026-08-23 (Iterasi 7)** — Tidak ada perubahan skema. `testimonials` mendapat CRUD admin penuh dengan star rating picker interaktif; `testimonial_key` immutable dari sisi admin (sama pola dengan key iterasi sebelumnya).
 - **2026-08-23 (Iterasi 6)** — Tidak ada perubahan skema. `blog_posts` mendapat CRUD admin penuh (form paling kompleks sejauh ini karena `sections` adalah array objek dgn sub-objek opsional `codeSnippet`); `post_key` dan `slug` immutable dari sisi admin (sama pola dengan `project_key`/`experience_key`).
 - **2026-08-23 (Iterasi 5)** — Tidak ada perubahan skema. `experiences` mendapat CRUD admin penuh; `experience_key` immutable dari sisi admin (sama pola dengan `project_key` di Iterasi 4).

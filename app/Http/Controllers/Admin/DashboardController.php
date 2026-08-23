@@ -22,7 +22,9 @@ class DashboardController extends Controller
             'experiences' => Experience::count(),
             'testimonials' => Testimonial::count(),
             'skills' => Skill::count(),
-            'contact_messages' => ContactMessage::count(),
+            // Unread count (bukan total pesan) — sesuai rencana dashboard
+            // "pesan kontak belum dibaca" di RENCANA-PENGEMBANGAN.md #5.
+            'contact_messages' => ContactMessage::where('is_read', false)->count(),
         ];
 
         $sections = SectionSetting::orderBy('sort_order')->get();

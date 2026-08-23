@@ -29,6 +29,49 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 8 — Pesan Masuk / Contact Messages (selesai: 2026-08-23)
+Status: Selesai
+
+### Ringkasan
+Menu "Pesan Masuk" (placeholder sejak Iterasi 0) sekarang berfungsi penuh — iterasi terakhir dari rangkaian Iterasi 1-8 yang dikerjakan berurutan otomatis. Beda dari 4 CRUD sebelumnya (Projects/Experience/Blog/Testimonials): ini **bukan** CRUD create/update penuh (pesan hanya dibuat dari form kontak publik, admin tidak membuat/mengedit pesan) — hanya **baca, tandai dibaca otomatis, dan hapus**, sesuai `RENCANA-PENGEMBANGAN.md`. Kolom baru `is_read` ditambahkan ke `contact_messages` lewat migrasi (baru pertama kali sejak Iterasi 0 ada perubahan skema di Fase 1 ini). Dashboard diupdate: kartu "Pesan Masuk" sekarang benar-benar menghitung **belum dibaca** (bukan total pesan), sesuai deskripsi asli di `RENCANA-PENGEMBANGAN.md` bagian 5 ("pesan kontak belum dibaca").
+
+### File/area utama yang berubah
+- `database/migrations/2026_08_23_060959_add_is_read_to_contact_messages_table.php` (baru) — `boolean('is_read')->default(false)->after('message')`.
+- `app/Models/ContactMessage.php` — tambah `is_read` ke `$fillable` + cast `boolean`.
+- `app/Http/Controllers/Admin/MessageController.php` (baru) — `index()` (filter `status=all|unread` via query string, `latest()->paginate(10)`, hitung `$unreadCount` terpisah untuk badge), `show()` (menandai `is_read = true` otomatis saat dibuka — **tidak ada tombol "tandai dibaca" terpisah**, sesuai rencana persis), `destroy()`. Tidak ada `create`/`store`/`edit`/`update` — pesan hanya berasal dari form kontak publik (`ContactMessageController@store` yang sudah ada, tidak disentuh).
+- `routes/admin.php` — placeholder `messages` dihapus dari `$placeholders`; ditambah 3 route (`admin.messages` GET index, `admin.messages.show` GET detail, `admin.messages.destroy` DELETE). **Ini melengkapi seluruh 11 menu admin non-Playground** — `$placeholders` sekarang hanya berisi 1 entri (`playground`, yang memang permanen placeholder karena section itu murni demo tanpa data, sesuai catatan di Iterasi 1).
+- `resources/views/admin/messages/index.blade.php` (baru) — daftar pesan dgn badge jumlah belum dibaca di header, tab filter "Semua"/"Belum Dibaca", baris pesan belum dibaca ditandai visual (background indigo tipis + dot indikator + judul bold), klik baris membuka detail (`admin.messages.show`), tombol hapus terpisah dgn modal konfirmasi (pola sama seluruh CRUD lain) supaya tidak ke-trigger tidak sengaja saat mencoba membuka pesan.
+- `resources/views/admin/messages/show.blade.php` (baru) — detail pesan (nama, email, jenis proyek, budget, timeline, isi pesan lengkap, tombol "Balas via Email" `mailto:`). Status ditandai dibaca terjadi di controller sebelum view dirender, jadi saat halaman ini tampil pesan **sudah** berstatus dibaca.
+- `app/Http/Controllers/Admin/DashboardController.php` — stat `contact_messages` diubah dari `ContactMessage::count()` (total) menjadi `ContactMessage::where('is_read', false)->count()` (belum dibaca), plus komentar penjelas.
+- `resources/views/admin/dashboard.blade.php` — label kartu diubah dari "Pesan Masuk" menjadi "Pesan Belum Dibaca" supaya angka & label konsisten.
+
+### Migrasi & seeder dijalankan
+- `php artisan migrate` — 1 migrasi baru dijalankan bersih (`add_is_read_to_contact_messages_table`), tidak ada isu (tabel `contact_messages` kosong saat migrasi dijalankan — 0 baris — jadi tidak ada masalah default value terhadap data lama).
+- Tidak ada seeder baru (contact_messages memang tidak diseed, hanya diisi dari form publik).
+
+### Verifikasi
+- `php artisan route:list --path=admin` — **54 route total**, bersih; hanya `admin/playground` (GET) yang masih route placeholder (closure `PlaceholderController`), sesuai desain permanen sejak Iterasi 1 — bukan sisa yang belum dikerjakan.
+- `npm run build` — sukses.
+- End-to-end via `php artisan serve` + `curl` (cookie jar, login admin):
+  - `GET /admin/messages` (kosong, `ContactMessage::count()` = 0 dari baseline) → 200, kosong.
+  - Kirim 1 pesan test lewat **form kontak publik sungguhan** (`POST /contact`, bukan lewat admin — sesuai desain, admin tak bisa membuat pesan) → `ContactMessage::count()` = 1, `is_read` = `false` (default).
+  - `GET /admin/messages` → pesan tampil dengan badge "1 belum dibaca" & indikator visual unread.
+  - `GET /admin/messages/{id}` (membuka detail) → 200, isi pesan lengkap tampil; dicek DB via `tinker` sesudahnya: `is_read` berubah jadi `true` **otomatis** (tanpa aksi eksplisit lain) — bukti "tandai dibaca otomatis saat dibuka" berfungsi.
+  - `GET /admin/messages?status=unread` sesudah pesan dibaca → tampil pesan kosong "Tidak ada pesan yang belum dibaca" — filter berfungsi benar.
+  - `GET /admin/dashboard` → kartu "Pesan Belum Dibaca" menunjukkan `0` (karena satu-satunya pesan sudah dibaca) — dicek langsung di HTML respons.
+  - `DELETE /admin/messages/{id}` → 302; `ContactMessage::count()` kembali `0` — bukti hapus berfungsi dgn modal konfirmasi.
+  - `storage/logs/laravel.log` dicek setelah seluruh rangkaian — kosong, tidak ada exception baru.
+  - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect); file cookie jar scratch dihapus.
+
+### Commit
+- (diisi setelah commit dibuat)
+
+### Catatan untuk review
+- **Ini iterasi terakhir dari rangkaian Iterasi 1-8 yang diminta dikerjakan otomatis berurutan.** Semua 11 menu admin non-Playground (Dashboard, Profil & Hero, Social Links, About & Skills, Projects, Experience, Blog, Testimonials, Pesan Masuk, Pengaturan Section, Login/Logout) kini punya fitur nyata — tidak ada lagi halaman "Segera Hadir" kecuali Playground (memang permanen by design). Ringkasan lengkap Iterasi 1-8 (hash commit, fitur, kredensial) dilaporkan terpisah ke pemanggil tugas di luar dokumen log ini.
+- Tidak ada halaman "reply" in-app (kirim balasan dari dalam admin) — sesuai rencana, hanya tombol `mailto:` yang membuka aplikasi email default admin. Ini konsisten dgn scope "tandai dibaca/belum, hapus, filter status" yang diminta, tidak lebih.
+
+---
+
 ## Iterasi 7 — Testimonials (selesai: 2026-08-23)
 Status: Selesai
 
