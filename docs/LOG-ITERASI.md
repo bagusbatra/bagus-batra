@@ -58,7 +58,7 @@ Menu "Blog" (placeholder sejak Iterasi 0) sekarang CRUD penuh — sesuai perkira
   - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
 
 ### Commit
-- (diisi setelah commit dibuat)
+- `0e6c87d` — Iterasi 6: CRUD Blog dengan repeater sections (heading/body/code/tip)
 
 ### Catatan untuk review
 - Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` diupdate hanya di bagian "Riwayat perubahan skema".
