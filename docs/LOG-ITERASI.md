@@ -58,7 +58,7 @@ Menu "Experience" (placeholder sejak Iterasi 0) sekarang CRUD penuh untuk tabel 
   - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
 
 ### Commit
-- (diisi setelah commit dibuat)
+- `5c086bd` — Iterasi 5: CRUD Experience dengan repeater achievements & skills
 
 ### Catatan untuk review
 - Field `featured` di `experiences` ada di skema & form admin, tapi **tidak dipakai untuk badge apapun** di `experience.blade.php` publik saat ini (beda dgn Project yang punya badge "Featured" jelas di kartu). Ini bukan bug yang diperkenalkan iterasi ini — sudah begitu sejak sebelum Fase 1 (kolom sudah ada di skema tapi partial publik tidak pernah merendernya). Dicatat sebagai temuan; tidak diperbaiki karena mengubah tampilan publik di luar scope "CRUD admin" iterasi ini — bisa jadi rekomendasi kecil untuk Iterasi 9 (Polish & QA) bila ingin dikonsistenkan dengan Project.
