@@ -59,7 +59,7 @@ Menu "About & Skills" (placeholder sejak Iterasi 0) sekarang CRUD penuh untuk ta
   - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
 
 ### Commit
-- (diisi setelah commit dibuat)
+- `a84d593` — Iterasi 3: CRUD Skills (About & Skills) dengan reorder dan slider level
 
 ### Catatan untuk review
 - **Keputusan 4 kartu "Prinsip Kerja"**: sesuai pertanyaan terbuka di `RENCANA-PENGEMBANGAN.md` bagian 8 ("dikonfirmasi di Iterasi 3"), diputuskan **tetap statis** (opsi default yang disebutkan di rencana), tidak dijadikan CRUD. Alasan: konten itu (Performance-First, Aksesibilitas & WAI-ARIA, Arsitektur Modular, Micro-Interactions) adalah pernyataan filosofi kerja yang jarang berubah dan bukan "data" dalam pengertian CRUD biasa (tidak ada listing/kategori/relasi) — membuatnya jadi tabel terpisah akan menambah kompleksitas skema untuk 4 baris yang praktis statis. Ditambahkan banner info di halaman admin About & Skills yang menjelaskan status ini secara eksplisit ke pengguna admin, supaya tidak membingungkan kenapa 4 kartu itu tidak muncul di CRUD. Bisa direvisit di iterasi lanjutan bila diminta.
