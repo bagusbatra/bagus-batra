@@ -29,6 +29,91 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 17 — Audit Ulang & Ringkasan Hasil (selesai: 2026-08-23)
+Status: Selesai — **Fase 3 (Optimalisasi Performa, Iterasi 13-17) TUNTAS SEPENUHNYA.**
+
+### Ringkasan
+Iterasi audit penutup (bukan fitur baru), sesuai `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 5 Iterasi 17. **Kondisi awal sesi**: `git status --short` **BERSIH** dan `git log` mengonfirmasi seluruh perubahan Iterasi 13-16 SUDAH ter-commit oleh user — termasuk commit `49c9bc1` yang ternyata menggabungkan Iterasi 15 (cache layer) DAN Iterasi 16 (route placeholder fix + README deploy) jadi satu commit sekaligus (`b433e69` = Iterasi 13, `0ac9b64` = Iterasi 14, `49c9bc1` = Iterasi 15+16 digabung). Ini berbeda dari asumsi rencana ("kemungkinan sudah di-commit") sekaligus dari catatan "Belum di-commit" yang tertulis di entri Iterasi 14-16 di bawah (yang ditulis SEBELUM user melakukan commit manual) — tidak ada tindakan diambil terhadap commit-commit tersebut maupun entri log lama (tidak direvisi/direvert), sesuai batasan tugas untuk tidak menyentuh apa pun yang sudah ada. Working tree bersih di awal sesi ini, jadi tidak ada perubahan Iterasi 13-16 yang perlu "dilanjutkan" — audit dimulai murni dari kondisi commit terakhir user.
+
+**1) Regresi penuh publik + admin** — satu sesi menyeluruh via `php artisan serve --port=8150` + `curl` (cookie jar untuk login `admin@bagusbatra.dev`/`Admin#12345`), `storage/logs/laravel.log` dikosongkan sebelum sesi:
+
+- **Data baseline dikonfirmasi PAS sebelum mulai**: 5 projects, 4 blog, 3 experience, 3 testimonials, 12 skills, 6 social links, 9/9 section aktif — persis sesuai baseline yang diharapkan.
+- **Publik**: `GET /` → 200, 9/9 section id (`hero`/`about`/`skills`/`projects`/`playground`/`experience`/`blog`/`testimonials`/`contact`) semuanya render 1x masing-masing. Toggle bahasa: 130 elemen `x-show` untuk `id` dan 130 untuk `en` (seimbang, konsisten). `[data-reveal]`: 52 elemen. `loading="lazy"`: 13, `loading="eager"`: 1 — cocok persis dengan hasil pengukuran Iterasi 14 untuk `GET /`.
+- **Cache & invalidasi dicek ulang lewat siklus HTTP form sungguhan** (bukan tinker) — `PUT /admin/profile` mengubah `tagline_id` jadi marker `TEST-CACHE-INVALIDATION-MARKER-ITERASI17` → `GET /` langsung (tanpa clear cache manual) menampilkan marker (1 kemunculan) → dikembalikan ke tagline asli → marker hilang (0), tagline asli kembali (1 kemunculan). **Invalidasi cache `site_profile` tetap berfungsi setelah ditumpuk Iterasi 13-16.**
+- `GET /projects` → 200, 8 gambar semuanya `loading="lazy"` (tidak ada elemen above-the-fold di halaman katalog, sesuai temuan Iterasi 14). Filter (`?category=Frontend`) → 200, pagination (`?page=1`) → 200.
+- `GET /projects/{key}` di-loop untuk **SEMUA 5 project** di database (diambil live dari `Project::pluck('project_key')`, bukan daftar hardcode): `aurora-commerce`, `fast-state-npm`, `lumina-saas`, `pulse-ai-workspace`, `zenith-design-system` — **5/5 sukses 200**, tidak ada 404/500. `GET /projects/does-not-exist` (key tak dikenal) → 404 (route-model-binding tetap benar).
+- **Admin — 11 menu sidebar** (dicek langsung dari `resources/views/admin/layouts/app.blade.php` array `$menu`, bukan asumsi "12 menu" di instruksi tugas — jumlah aktual 11: Dashboard, Profil & Hero, Social Links, About & Skills, Projects, Playground, Experience, Blog, Testimonials, Pesan Masuk, Pengaturan Section): **SEMUA 11 → 200** setelah login. `GET /admin/playground` (route placeholder yang diubah dari closure ke Controller@method di Iterasi 16) → 200, isi mengandung teks "Playground" (4 kemunculan, termasuk `<title>Playground — Admin Bagus Batra</title>`) — perbaikan Iterasi 16 tetap berfungsi setelah ditumpuk perubahan lain.
+- **Siklus create→edit→hapus via HTTP form sungguhan** (bukan tinker langsung) untuk Projects & Skills:
+  - Projects: `POST /admin/projects` (create, title "Iterasi17 Dummy Project") → 302, id=8 dikonfirmasi ada → `PUT /admin/projects/8` (edit, title "...EDITED") → 302, dikonfirmasi berubah → `DELETE /admin/projects/8` → 302, `Project::count()` kembali ke **5**.
+  - Skills: `POST /admin/about-skills` (create) → 302, id=15 dikonfirmasi ada → `PUT /admin/about-skills/15` (edit) → 302, dikonfirmasi berubah → `DELETE /admin/about-skills/15` → 302, `Skill::count()` kembali ke **12**.
+- **Section-settings toggle**: `PATCH /admin/section-settings/8/toggle` (testimonials) → 200, `GET /` kehilangan `id="testimonials"` (0 match) → toggle balik → `id="testimonials"` muncul lagi (1 match), `SectionSetting::where('is_active',true)->count()` kembali ke **9/9**.
+- **Hasil regresi: BERSIH, TIDAK ADA REGRESI ditemukan** dari Iterasi 13-16 yang perlu diperbaiki. Tidak ada perubahan kode baru yang diperlukan di iterasi ini.
+
+**2) Uji 3 command cache produksi SEKALI LAGI, ditumpuk bersamaan** (bukan satu-satu terpisah seperti Iterasi 16) — untuk memastikan kombinasi perubahan Iterasi 13-16 tidak saling konflik: `php artisan config:cache` → sukses, `php artisan route:cache` → sukses (mengonfirmasi perbaikan closure route Iterasi 16 masih valid), `php artisan view:cache` → sukses. Dengan ketiganya aktif SEKALIGUS: `GET /` → 200, `GET /projects` → 200, `GET /projects/lumina-saas` → 200, `GET /admin/login` → 200, login sungguhan → `GET /admin/dashboard` → 200 (`<title>Dashboard — Admin Bagus Batra</title>` benar), `GET /admin/playground` → 200 (4x "Playground" tetap muncul), `GET /admin/projects` → 200. Waktu respons `GET /` dengan ketiga cache aktif (3x request): 0.833s / 0.587s / 0.543s — sedikit lebih tinggi dari angka Iterasi 16 (~0.349s) karena variasi beban mesin lokal saat pengukuran (bukan regresi arsitektural; server sama, cache sama-sama aktif) — tetap dalam orde besaran yang sama (sub-detik), bukan penurunan performa yang berarti. **Dibersihkan lagi (`config:clear`, `route:clear`, `view:clear`) di akhir** — dikonfirmasi `bootstrap/cache/` cuma berisi `packages.php`/`services.php` bawaan, `storage/framework/views/` kosong dari hasil compile, `GET /` setelah `:clear` tetap 200.
+
+**3) `storage/logs/laravel.log` bersih sepanjang seluruh proses** — dicek `wc -l` di beberapa titik (awal sesi, setelah CRUD, setelah cache stack, setelah clear) → konsisten **0 baris** di semua titik. Tidak ada exception tersembunyi dari kombinasi perubahan Iterasi 13-16.
+
+**4) Ringkasan angka before/after Iterasi 13-16** (dikutip dari entri masing-masing di bawah, bukan diukur ulang dari nol):
+
+| Iterasi | Metrik | Before | After |
+|---|---|---|---|
+| **Baseline Fase 3** (bagian 3 rencana) | Bundle satu entry gabungan (`app.css`+`app.js`) dipakai identik di publik & admin | 194.683 KB raw / **42.139 KB gzip** per 1x load, di MANA PUN halaman | — |
+| **Baseline Fase 3** | Query `GET /` | 8 query domain tanpa cache + 2 session = 10 | — |
+| **Baseline Fase 3** | Featured project | `Project::orderBy(...)->get()` semua baris, filter `featured` di PHP | — |
+| **Baseline Fase 3** | Gambar | 0 dari 18 `<img>` pakai `loading`/`width`/`height` | — |
+| **13 — Split bundle publik/admin** | Total per load, HALAMAN PUBLIK | 194.683 KB / 42.139 KB gzip | 194.014 KB / **42.102 KB gzip** (≈0%, hampir tidak berubah — wajar, publik memang butuh hampir semua logic) |
+| **13** | Total per load, HALAMAN ADMIN | 194.683 KB / 42.139 KB gzip | 187.036 KB / **39.648 KB gzip** (-5.9% total, **-11.5% khusus JS**) |
+| **13** | Alpine core shared chunk | — | 53.168 KB / 18.605 KB gzip, **tidak terduplikasi** (Rollup auto code-split, gratis tanpa config manual) |
+| **13** | CSS | — | TETAP 1 file (`app.css`, 133.072 KB/20.554 KB gzip) — keputusan sadar, overlap besar publik/admin, Tailwind v4 content-scan sudah otomatis minimal |
+| **14 — Lazy loading gambar** | `GET /` — lazy vs eager | 0 lazy / 14 eager (implisit, tanpa atribut) | **13 lazy / 1 eager** (93% gambar index ditunda) |
+| **14** | `GET /projects` — lazy vs eager | 0 lazy / 8 eager | **8 lazy / 0 eager** (100% ditunda, tidak ada elemen above-the-fold) |
+| **14** | `width`/`height` eksplisit | 0 dari 18 elemen | 18/18 elemen (semua `<img>` publik+admin) |
+| **14** | Penyesuaian `w=` Unsplash | `w=1000`/`w=800-1000` dipakai juga utk thumbnail 56×56 admin (9-18x kelebihan) | Override jadi `w=120` KHUSUS render thumbnail admin (`admin/projects/index`, `admin/blog/index`) via `preg_replace` di Blade, TIDAK mengubah nilai tersimpan di DB (kartu/katalog/banner besar tetap resolusi penuh) |
+| **15 — Query & cache layer** | Query `GET /` — before | 10 (8 domain + 2 session) | — |
+| **15** | Query `GET /` — cache DINGIN | — | 16 (5 domain + 3 cache-miss-select + 3 cache-insert + 3 query sumber asli + 2 session) |
+| **15** | Query `GET /` — cache PANAS | — | **TETAP 10** (5 domain + 3 cache-select-HIT + 2 session) — **TIDAK turun dari baseline** karena `CACHE_STORE=database` (baca cache = tetap 1 query SQL ke tabel `cache`, bukan operasi gratis in-memory) |
+| **15** | Waktu respons `GET /` — before vs cache panas | 0.375s avg | ~0.42s avg (nyaris sama, dalam margin noise dataset kecil) |
+| **15** | Query featured project | Fetch semua baris, filter PHP | Filter SQL langsung (`where featured=true`), fallback bersyarat hanya jika kosong — 1 query, tidak pernah trigger fallback di kondisi data sekarang |
+| **16 — Kesiapan produksi & HTTP** | `GET /` dengan cache produksi (config+route+view) | — | 0.349s avg (3x: 0.359/0.349/0.339) |
+| **16** | `GET /` tanpa cache, request PERTAMA pasca `view:clear` (compile Blade dari 0) | — | **12.365s** (biaya nyata yang dihindari `view:cache`) |
+| **16** | `GET /` tanpa cache, steady-state (Blade sudah pernah ter-compile) | — | ~0.356s (nyaris sama dengan cache aktif — gap kecil untuk request non-pertama) |
+| **16** | Bug ditemukan & diperbaiki | Closure route placeholder admin bikin `route:cache` gagal | Dipindah ke `Controller@method` + konstanta `PLACEHOLDERS` — `route:cache` sukses, perilaku terlihat identik |
+| **17 — Audit ulang (iterasi ini)** | 3 command cache ditumpuk bersamaan | — | Semua sukses, tidak ada konflik. Regresi penuh publik+admin: **bersih, 0 masalah baru** |
+
+### File/area utama yang berubah
+- **Tidak ada perubahan kode** — murni audit & pengukuran. Data dummy (1 project id=8, 1 skill id=15) dibuat lalu dihapus lagi selama uji siklus CRUD; state akhir database persis sama dengan sebelum sesi ini (5 projects, 4 blog, 3 experience, 3 testimonials, 12 skills, 6 social links, 9/9 section aktif) — dikonfirmasi ulang lewat tinker di akhir sesi.
+- `docs/LOG-ITERASI.md` — entri ini sendiri.
+- `docs/RENCANA-OPTIMASI-PERFORMA.md` — baris status paling atas diupdate menandai Fase 3 tuntas.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru — iterasi ini murni audit, tidak ada perubahan skema. `docs/ERD.md` sengaja TIDAK diupdate (tidak ada temuan yang mengharuskan perubahan skema).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+Seluruh detail verifikasi ada di Ringkasan poin 1-3 di atas (regresi penuh publik+admin, 3 command cache ditumpuk, log bersih). Ringkasan singkat:
+- Publik: `GET /` (9/9 section, cache invalidasi terbukti via siklus edit-lihat-revert), `GET /projects` (filter+pagination), `GET /projects/{key}` (5/5 project, loop otomatis dari DB, 0 404/500 tak terduga), toggle bahasa & `[data-reveal]` utuh, lazy/eager image count cocok Iterasi 14.
+- Admin: login sukses, 11/11 menu 200 (termasuk Playground placeholder dengan judul benar), CRUD create→edit→hapus sukses untuk Projects & Skills (data dummy dibersihkan, baseline dikembalikan persis), section-settings toggle+invalidasi berfungsi.
+- 3 command cache produksi ditumpuk bersamaan → sukses semua, fungsional tetap 200 di semua endpoint yang dicek, `:clear` di akhir mengembalikan environment development ke kondisi normal.
+- `storage/logs/laravel.log` bersih (0 baris) di setiap titik pengecekan sepanjang sesi.
+- Server `php artisan serve` (port 8150) dimatikan di akhir (dikonfirmasi request berikutnya `000`/connection refused).
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user (lihat catatan Fase 3 di `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 2).
+
+### Catatan untuk review
+- **Fase 3 (Iterasi 13-17, Optimalisasi Performa) SEKARANG TUNTAS.** Tidak ada regresi ditemukan dari Iterasi 13-16 meski ditumpuk bersamaan dan diuji ulang penuh — tidak ada perubahan kode baru yang diperlukan di iterasi ini.
+- **Kesimpulan jujur — mana yang benar-benar berdampak besar vs marginal** (lihat tabel di atas untuk angka lengkap):
+  - **Berdampak besar & terukur jelas**: (a) `view:cache` untuk cold-start — 12.365s → ~0.35s untuk request pertama pasca-deploy, ini penghematan nyata & signifikan, bukan klaim berlebihan. (b) Split bundle admin (Iterasi 13) — pengurangan JS admin -11.5% gzip nyata terukur, meski dalam angka absolut kecil (KB-level) karena `portfolio.js` sendiri memang tidak besar. (c) Lazy loading gambar (Iterasi 14) — 93-100% gambar below-the-fold ditunda di 2 halaman terberat, dampak nyata untuk LCP/bandwidth awal meski belum diukur dalam bentuk waktu load browser sungguhan (keterbatasan: pengukuran sepanjang Fase 3 pakai `Content-Length`/hitung elemen via curl, bukan Lighthouse/DevTools timeline).
+  - **Dampak kecil/marginal di skala data saat ini — JANGAN dilebih-lebihkan**: (a) Cache query layer (Iterasi 15) — jumlah query `GET /` cache panas TETAP 10, sama seperti baseline, karena `CACHE_STORE=database` membuat baca-cache tetap 1 query SQL sungguhan (bukan operasi gratis). Waktu respons pun nyaris tidak berbeda (~0.375s vs ~0.42s, dalam margin noise). Infrastruktur cache-nya sudah benar & ter-invalidasi otomatis (diverifikasi ulang di iterasi ini), tapi manfaat SEKARANG sangat kecil untuk dataset ~5-12 baris per tabel. (b) Split bundle publik (Iterasi 13) — nyaris tidak berubah (-0.037 KB gzip, ≈0%), karena halaman publik memang butuh hampir semua logic yang ada. (c) Selisih waktu respons steady-state dengan/tanpa cache produksi (Iterasi 16) — kecil (~0.349s vs ~0.356s), manfaat utamanya murni di cold-start pertama, bukan di traffic berkelanjutan.
+- **Rekomendasi lanjutan DI LUAR SCOPE Fase 3** (dicatat untuk referensi masa depan, TIDAK dikerjakan di sini):
+  - Kalau jumlah project/blog/data admin bertambah signifikan di masa depan (puluhan-ratusan baris), pertimbangkan ganti `CACHE_STORE` dari `database` ke `file`/`redis` — infrastruktur cache (key, TTL, invalidasi) sudah siap dipakai tanpa perubahan kode, tinggal ganti driver di `.env`, dan manfaat pengurangan query baru akan benar-benar terlihat di angka (bukan cuma "siap tapi belum kelihatan" seperti sekarang).
+  - Kalau ingin memverifikasi dampak lazy-loading & split bundle dalam satuan waktu browser sungguhan (bukan cuma jumlah elemen/Content-Length via curl), pertimbangkan Lighthouse/DevTools manual sebagai langkah lanjutan — di luar scope Fase 3 (bagian 6 rencana eksplisit menyebut "Automated performance testing/CI... di luar scope").
+  - Evaluasi ulang cache full-page index (dilewati di Iterasi 15 karena kompleksitas invalidasi 8 sumber data) kalau di masa depan ada kebutuhan performa yang lebih mendesak dari sekadar 3 data yang sudah di-cache sekarang.
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` tidak diupdate (tidak ada temuan yang mengharuskannya).
+- **Ini iterasi terakhir Fase 3** — tidak ada pekerjaan baru dimulai di luar scope setelah ini, sesuai batasan tugas.
+
+---
+
 ## Iterasi 16 — Kesiapan Produksi & HTTP Delivery (selesai: 2026-08-23)
 Status: Selesai — **Fase 3 (Optimalisasi Performa), lanjutan Iterasi 13-15.**
 
