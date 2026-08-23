@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import { initRevealOnScroll } from './reveal';
 
 /* ------------------------------------------------------------------ *
  * Language store — persisted globally so every section (Blade + Alpine)
@@ -122,19 +123,7 @@ Alpine.data('appRoot', () => ({
     },
 
     initReveal() {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('is-visible');
-                        observer.unobserve(entry.target);
-                    }
-                });
-            },
-            { threshold: 0.12 }
-        );
-
-        document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el));
+        initRevealOnScroll();
     },
 }));
 

@@ -56,6 +56,8 @@ $paths = [
     'printer' => '<polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
     'graduation-cap' => '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>',
     'quote' => '<path d="M9 7H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v3l-3 2h5V9a2 2 0 0 0-2-2z"/><path d="M19 7h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v3l-3 2h5V9a2 2 0 0 0-2-2z"/>',
+    'user' => '<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/>',
+    'log-out' => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>',
 ];
 
 $inner = $paths[$name] ?? '<circle cx="12" cy="12" r="9"/>';

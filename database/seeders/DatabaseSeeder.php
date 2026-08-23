@@ -28,6 +28,10 @@ class DatabaseSeeder extends Seeder
             BlogPostSeeder::class,
             ExperienceSeeder::class,
             TestimonialSeeder::class,
+            SiteProfileSeeder::class,
+            SocialLinkSeeder::class,
+            SectionSettingSeeder::class,
+            AdminUserSeeder::class,
         ]);
     }
 }

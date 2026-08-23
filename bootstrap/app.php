@@ -12,7 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // All routes currently protected by the "auth" middleware live under
+        // /admin, so unauthenticated visitors are always sent to the admin
+        // login page, and an already-authenticated admin hitting a "guest"
+        // route (e.g. /admin/login) is sent to the dashboard.
+        $middleware->redirectGuestsTo(fn () => route('admin.login'));
+        $middleware->redirectUsersTo(fn () => route('admin.dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
