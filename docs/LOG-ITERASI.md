@@ -77,7 +77,7 @@ Audit dilakukan dengan membaca seluruh `resources/views/admin/**` dan `app/Http/
   - Server `php artisan serve` dimatikan setelah verifikasi (proses PHP di-`Stop-Process`, dikonfirmasi request berikutnya gagal connect).
 
 ### Commit
-- (diisi setelah commit dibuat)
+- `1245c7c` — Iterasi 9: polish & QA lintas admin — audit konsistensi, responsif, animasi, regresi penuh
 
 ### Catatan untuk review
 - **Fase 1 (Iterasi 0-9) sekarang BENAR-BENAR TUNTAS.** Seluruh 12 menu admin punya fungsi nyata (Playground memang permanen tanpa form data, by design — bukan belum-selesai), seluruh audit polish (konsistensi/responsif/animasi) sudah dijalankan, dan seluruh regresi publik+admin hijau termasuk 2 bug 500 yang ditemukan & diperbaiki di iterasi ini sendiri. Percobaan Iterasi 9 sebelumnya (sesi terpisah) berhenti karena error sesi API sebelum sempat mengubah kode apa pun — eksekusi kali ini adalah realisasi pertama & satu-satunya untuk Iterasi 9.
