@@ -6,7 +6,9 @@ use App\Models\BlogPost;
 use App\Models\Experience;
 use App\Models\Project;
 use App\Models\SectionSetting;
+use App\Models\SiteProfile;
 use App\Models\Skill;
+use App\Models\SocialLink;
 use App\Models\Testimonial;
 
 class PortfolioController extends Controller
@@ -19,8 +21,14 @@ class PortfolioController extends Controller
         $experiences = Experience::orderBy('sort_order')->get();
         $testimonials = Testimonial::orderBy('sort_order')->get();
 
-        $personalInfo = config('portfolio.personal_info');
-        $socialLinks = config('portfolio.social_links');
+        // Iterasi 2: dibaca dari database (site_profiles / social_links),
+        // bukan lagi config('portfolio.*'). SiteProfile's fillable columns
+        // match the config('portfolio.personal_info') keys 1:1, and
+        // SocialLink's fillable columns match config('portfolio.social_links')
+        // items 1:1 (plus is_active/sort_order) — so every Blade partial
+        // that reads $personalInfo['x'] / $link['x'] keeps working unchanged.
+        $personalInfo = SiteProfile::current()->toArray();
+        $socialLinks = SocialLink::where('is_active', true)->orderBy('sort_order')->get()->toArray();
 
         // section_key => is_active, queried once and shared with the view
         // (and every @include'd partial, since Blade partials inherit the

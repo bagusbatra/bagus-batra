@@ -3,7 +3,9 @@
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PlaceholderController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SectionSettingController;
+use App\Http\Controllers\Admin\SocialLinkController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,12 +35,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('section-settings', [SectionSettingController::class, 'index'])->name('section-settings');
         Route::patch('section-settings/{sectionSetting}/toggle', [SectionSettingController::class, 'toggle'])->name('section-settings.toggle');
 
+        Route::get('profile', [ProfileController::class, 'edit'])->name('profile');
+        Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
+
+        Route::get('social-links', [SocialLinkController::class, 'index'])->name('social-links');
+        Route::get('social-links/create', [SocialLinkController::class, 'create'])->name('social-links.create');
+        Route::post('social-links', [SocialLinkController::class, 'store'])->name('social-links.store');
+        Route::get('social-links/{socialLink}/edit', [SocialLinkController::class, 'edit'])->name('social-links.edit');
+        Route::put('social-links/{socialLink}', [SocialLinkController::class, 'update'])->name('social-links.update');
+        Route::delete('social-links/{socialLink}', [SocialLinkController::class, 'destroy'])->name('social-links.destroy');
+        Route::patch('social-links/{socialLink}/move', [SocialLinkController::class, 'move'])->name('social-links.move');
+
         // Menus without a real feature yet — placeholder pages so the
         // sidebar never 404s while making the owning iteration explicit.
         // [route name suffix => [menu title, "Segera Hadir" note]]
         $placeholders = [
-            'profile' => ['Profil & Hero', 'Segera hadir — bagian dari Iterasi 2'],
-            'social-links' => ['Social Links', 'Segera hadir — bagian dari Iterasi 2'],
             'about-skills' => ['About & Skills', 'Segera hadir — bagian dari Iterasi 3'],
             'projects' => ['Projects', 'Segera hadir — bagian dari Iterasi 4'],
             'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
