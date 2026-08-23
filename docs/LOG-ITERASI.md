@@ -29,6 +29,46 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 4 — Projects (selesai: 2026-08-23)
+Status: Selesai
+
+### Ringkasan
+Menu "Projects" (placeholder sejak Iterasi 0) sekarang CRUD penuh — iterasi paling kompleks di sisi form sejauh ini karena harus menampung 4 struktur data berulang (`tags`, `metrics`, `highlights`, `tech_stack` per 4 kelompok: frontend/backend/database/cloudAndDevOps), sesuai persis field yang dipakai kartu grid & modal case-study publik. List admin dilengkapi search judul, filter kategori, dan pagination Laravel bawaan (Tailwind). Upload gambar mendukung URL langsung atau file dengan preview, sama seperti pola avatar Iterasi 2.
+
+### File/area utama yang berubah
+- `app/Http/Controllers/Admin/ProjectController.php` (baru) — CRUD penuh + `move()` (pola sama Iterasi 2/3) + `index()` dengan `search`/`category` query filter dan `paginate(10)->withQueryString()`. Konstanta `CATEGORIES` (5 kategori nyata: Full-Stack, Frontend, UI/UX & Systems, Open Source, AI & Tools — sengaja **tidak** termasuk `"All"` karena itu murni pseudo-kategori filter di `projects.blade.php`, bukan kategori project sungguhan) dipakai bersama oleh dropdown filter admin & form create/edit supaya selalu sinkron. `validated()` privat membersihkan baris repeater kosong (mis. baris tag yang ditambah lalu tidak diisi) sebelum disimpan sebagai JSON.
+- **Keputusan `project_key` immutable**: dibuat sekali otomatis dari `Str::slug($title)` saat create (dengan suffix `-2`, `-3`, dst bila bentrok), **tidak bisa diedit** dari form sama sekali (field tidak ditampilkan sebagai input, hanya ditampilkan read-only di form edit). Alasan: `project_key` adalah "referensi stabil ... terpisah dari id auto-increment" (lihat `docs/ERD.md` bagian Catatan penting) yang dipakai di banyak tempat sebagai DOM id (`project-card-{key}`, `view-study-{key}`, dst) — mengizinkannya berubah saat judul diedit berisiko memutus referensi itu tanpa manfaat nyata bagi user admin.
+- `routes/admin.php` — placeholder `projects` dihapus dari `$placeholders`; ditambah 7 route `admin.projects*` (index/create/store/edit/update/destroy/move).
+- `resources/views/admin/projects/index.blade.php` (baru) — search box + dropdown kategori (form GET, query string dipertahankan lewat `withQueryString()`), list dgn thumbnail gambar, badge Featured, tombol naik/turun, modal konfirmasi hapus, dan `{{ $projects->links() }}` (pagination Tailwind bawaan Laravel — tidak perlu publish/kustomisasi view vendor, sudah Tailwind secara default).
+- `resources/views/admin/projects/form.blade.php` (baru) — form terbesar sejauh ini: 6 kartu (Informasi Dasar, Gambar, Tags, Metrics, Highlights, Tech Stack 4-grup, Link & Tampilan). Semua repeater pakai Alpine `x-for` di atas array biasa (`tags`, `highlights`) atau array objek (`metrics: [{label,value}]`, `tech: {frontend:[],backend:[],database:[],cloudAndDevOps:[]}`), dengan `:name` dibind eksplisit per-index (`tags[${index}]`, `metrics[${index}][label]`, `tech_stack[frontend][${index}]`) — sengaja pakai indeks eksplisit (bukan `name="tags[]"` polos) supaya urutan array & pemetaan label↔value pada `metrics` selalu benar terlepas dari urutan field dalam body request. Warna aksen pakai `<input type="color">` & `<input type="text">` yang sama-sama `x-model="accentColor"` supaya selalu sinkron dua arah.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru (skema `projects` sudah lengkap sejak sebelum Fase 1, termasuk kolom JSON `tags`/`metrics`/`highlights`/`tech_stack`).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+- `php artisan route:list --path=admin/projects` — 7 route bersih, tidak ada placeholder tersisa.
+- `npm run build` — sukses.
+- End-to-end via `php artisan serve` + `curl` (cookie jar, login admin):
+  - `GET /admin/projects` → 200, 5 project seed tampil (`Project::count()` = 5, cocok). `GET /admin/projects/create` → 200.
+  - `POST /admin/projects` menambah "Project Test Unik Nebula" dgn 2 tags, 1 metric, 1 highlight, tech_stack frontend+backend → 302; dicek langsung ke DB via `tinker`: `project_key` ter-generate otomatis jadi `project-test-unik-nebula`, `tags`/`metrics`/`highlights`/`tech_stack` tersimpan sebagai JSON persis sesuai input (termasuk 2 grup tech_stack kosong `database`/`cloudAndDevOps` otomatis `[]`, bukan `null`). `GET /` sesudahnya mengandung teks "Project Test Unik Nebula" (3 match: judul kartu, JSON `x-data`, DOM id) — bukti tambah project langsung tampil.
+  - `PUT /admin/projects/{id}` mengubah judul jadi "...EDITED" → 302; `GET /` mengandung judul baru; **`project_key` dicek tetap `project-test-unik-nebula`** (tidak berubah walau judul diedit) — sesuai keputusan immutability di atas.
+  - `GET /admin/projects?search=Nebula` → hanya 1 project cocok tampil (project lain seperti "Lumina Analytics" tidak muncul); `GET /admin/projects?category=Frontend` → menampilkan kedua project kategori Frontend (Aurora + project test) — filter & search berfungsi independen maupun bersamaan.
+  - `DELETE /admin/projects/{id}` untuk project test → 302; `Project::count()` kembali 5; `GET /` → 0 match — bukti hapus langsung hilang.
+  - `PATCH /admin/projects/{id}/move` (`direction=up`) → `sort_order` bertukar dgn tetangga, dicek via `tinker`; dikembalikan manual ke urutan seed semula setelah verifikasi.
+  - `storage/logs/laravel.log` dicek setelah seluruh rangkaian — kosong, tidak ada exception baru.
+  - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
+
+### Commit
+- (diisi setelah commit dibuat)
+
+### Catatan untuk review
+- Field `client` sengaja dibiarkan nullable di form (beberapa project publik memang tanpa client / "Open Project" ditampilkan di modal via fallback `x-text="... || 'Open Project'"` yang sudah ada di `project-modal.blade.php` — tidak diubah, form admin tinggal mengikuti perilaku itu).
+- Reorder pakai tombol naik/turun (bukan drag-and-drop), konsisten dengan Social Links (Iterasi 2) & Skills (Iterasi 3) — pola yang sama dipertahankan di seluruh CRUD admin untuk konsistensi UX antar menu (relevan untuk audit konsistensi di Iterasi 9 nanti, walau Iterasi 9 di luar cakupan permintaan saat ini).
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` diupdate hanya di bagian "Riwayat perubahan skema".
+
+---
+
 ## Iterasi 3 — Skills / About (selesai: 2026-08-23)
 Status: Selesai
 

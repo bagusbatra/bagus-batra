@@ -170,6 +170,7 @@ erDiagram
 
 ## Riwayat perubahan skema
 
+- **2026-08-23 (Iterasi 4)** — Tidak ada perubahan skema. `projects` (sudah ada sebelum Fase 1, termasuk kolom JSON `tags`/`metrics`/`highlights`/`tech_stack`) mendapat CRUD admin penuh dengan repeater untuk keempat kolom JSON tersebut. `project_key` diputuskan immutable dari sisi admin (dibuat otomatis dari judul saat create, tidak bisa diedit) — bukan perubahan skema, murni aturan di level aplikasi.
 - **2026-08-23 (Iterasi 3)** — Tidak ada perubahan skema. `skills` (sudah ada sebelum Fase 1) mendapat CRUD admin penuh (menu About & Skills); halaman publik sudah membaca dari tabel ini sejak awal (bukan config), jadi tidak ada perubahan di sisi controller publik.
 - **2026-08-23 (Iterasi 2)** — Tidak ada perubahan skema. `site_profiles` & `social_links` (sudah ada sejak Iterasi 0) mulai punya CRUD/edit admin nyata (Profil & Hero, Social Links) dan mulai dikonsumsi langsung oleh halaman publik (`PortfolioController`) menggantikan `config('portfolio.*')`. `php artisan storage:link` dijalankan untuk pertama kali (dibutuhkan fitur upload avatar) — bukan perubahan skema, tapi dicatat karena bagian dari environment setup.
 - **2026-08-23 (Iterasi 1)** — Tidak ada perubahan skema. `section_settings` yang sudah ada sejak Iterasi 0 mulai dipakai penuh (toggle admin real-time + halaman publik menghormati `is_active`); hanya isi kolom `label` yang diupdate (Bahasa Indonesia) via `SectionSettingSeeder`, bukan struktur tabel.

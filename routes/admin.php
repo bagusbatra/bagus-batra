@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PlaceholderController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\SectionSettingController;
 use App\Http\Controllers\Admin\SkillController;
 use App\Http\Controllers\Admin\SocialLinkController;
@@ -55,11 +56,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('about-skills/{skill}', [SkillController::class, 'destroy'])->name('about-skills.destroy');
         Route::patch('about-skills/{skill}/move', [SkillController::class, 'move'])->name('about-skills.move');
 
+        Route::get('projects', [ProjectController::class, 'index'])->name('projects');
+        Route::get('projects/create', [ProjectController::class, 'create'])->name('projects.create');
+        Route::post('projects', [ProjectController::class, 'store'])->name('projects.store');
+        Route::get('projects/{project}/edit', [ProjectController::class, 'edit'])->name('projects.edit');
+        Route::put('projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
+        Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
+        Route::patch('projects/{project}/move', [ProjectController::class, 'move'])->name('projects.move');
+
         // Menus without a real feature yet — placeholder pages so the
         // sidebar never 404s while making the owning iteration explicit.
         // [route name suffix => [menu title, "Segera Hadir" note]]
         $placeholders = [
-            'projects' => ['Projects', 'Segera hadir — bagian dari Iterasi 4'],
             'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
             'experience' => ['Experience', 'Segera hadir — bagian dari Iterasi 5'],
             'blog' => ['Blog', 'Segera hadir — bagian dari Iterasi 6'],
