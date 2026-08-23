@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\SectionSettingController;
 use App\Http\Controllers\Admin\SkillController;
 use App\Http\Controllers\Admin\SocialLinkController;
+use App\Http\Controllers\Admin\TestimonialController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -82,12 +83,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('blog/{post}', [BlogPostController::class, 'destroy'])->name('blog.destroy');
         Route::patch('blog/{post}/move', [BlogPostController::class, 'move'])->name('blog.move');
 
+        Route::get('testimonials', [TestimonialController::class, 'index'])->name('testimonials');
+        Route::get('testimonials/create', [TestimonialController::class, 'create'])->name('testimonials.create');
+        Route::post('testimonials', [TestimonialController::class, 'store'])->name('testimonials.store');
+        Route::get('testimonials/{testimonial}/edit', [TestimonialController::class, 'edit'])->name('testimonials.edit');
+        Route::put('testimonials/{testimonial}', [TestimonialController::class, 'update'])->name('testimonials.update');
+        Route::delete('testimonials/{testimonial}', [TestimonialController::class, 'destroy'])->name('testimonials.destroy');
+        Route::patch('testimonials/{testimonial}/move', [TestimonialController::class, 'move'])->name('testimonials.move');
+
         // Menus without a real feature yet — placeholder pages so the
         // sidebar never 404s while making the owning iteration explicit.
         // [route name suffix => [menu title, "Segera Hadir" note]]
         $placeholders = [
             'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
-            'testimonials' => ['Testimonials', 'Segera hadir — bagian dari Iterasi 7'],
             'messages' => ['Pesan Masuk', 'Segera hadir — bagian dari Iterasi 8'],
         ];
 

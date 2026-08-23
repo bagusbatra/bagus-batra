@@ -29,6 +29,42 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 7 — Testimonials (selesai: 2026-08-23)
+Status: Selesai
+
+### Ringkasan
+Menu "Testimonials" (placeholder sejak Iterasi 0) sekarang CRUD penuh — model paling sederhana di antara Iterasi 4-7 (tidak ada kolom JSON/repeater), jadi form-nya jauh lebih ringkas. Fitur baru yang belum ada di CRUD sebelumnya: **star rating picker** interaktif (klik bintang untuk set rating 1-5, hover preview sebelum diklik) menggantikan input angka biasa. `testimonial_key` dibuat otomatis dari `name + company` dan immutable, pola sama dengan iterasi CRUD sebelumnya.
+
+### File/area utama yang berubah
+- `app/Http/Controllers/Admin/TestimonialController.php` (baru) — CRUD penuh + `move()` + `index()` dgn search (nama/perusahaan) + filter rating (dropdown 1-5) + pagination.
+- `routes/admin.php` — placeholder `testimonials` dihapus dari `$placeholders`; ditambah 7 route `admin.testimonials*`.
+- `resources/views/admin/testimonials/index.blade.php` (baru) — pola identik list CRUD lain, tambahan render bintang rating (`@for` loop icon `star` terisi sejumlah `$item->rating`) per baris, filter dropdown rating 5→1 bintang.
+- `resources/views/admin/testimonials/form.blade.php` (baru) — **star rating picker**: 5 tombol ikon bintang, `x-data` menyimpan `rating` (nilai tersimpan) & `hoverRating` (preview saat hover, direset ke 0 saat mouse keluar area); ikon terisi (`fill-amber-400`) bila `(hoverRating || rating) >= i`, memberi feedback visual instan tanpa perlu klik dulu. Nilai final dikirim lewat `<input type="hidden" name="rating" :value="rating">`. Avatar pakai pola upload+URL yang sama dgn iterasi sebelumnya.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru (skema `testimonials` sudah lengkap sebelum Fase 1).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+- `php artisan route:list --path=admin/testimonials` — 7 route bersih, tidak ada placeholder tersisa.
+- `npm run build` — sukses.
+- End-to-end via `php artisan serve` + `curl` (cookie jar, login admin):
+  - `GET /admin/testimonials` → 200, 3 testimoni seed tampil (`Testimonial::count()` = 3, cocok).
+  - `POST /admin/testimonials` menambah "Testimoni Test Unik Orion" (rating 4) → 302; dicek DB via `tinker`: `rating` tersimpan `4` persis, `testimonial_key` ter-generate `testimoni-test-unik-orion-test-corp-unik`. `GET /` sesudahnya mengandung teks itu (2 match) — bukti tambah langsung tampil.
+  - `PUT /admin/testimonials/{id}` mengubah nama jadi "...EDITED" & rating jadi 5 → 302; `GET /` mengandung nama baru; `testimonial_key` dicek tetap sama (tidak berubah), `rating` di DB terkonfirmasi `5`.
+  - `GET /admin/testimonials?rating=5` → hanya testimoni dgn rating 5 yang tampil (termasuk testimoni test yang baru diedit).
+  - `DELETE /admin/testimonials/{id}` untuk testimoni test → 302; `Testimonial::count()` kembali 3; `GET /` → 0 match — bukti hapus langsung hilang.
+  - `storage/logs/laravel.log` dicek setelah seluruh rangkaian — kosong, tidak ada exception baru.
+  - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
+
+### Commit
+- (diisi setelah commit dibuat)
+
+### Catatan untuk review
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` diupdate hanya di bagian "Riwayat perubahan skema".
+
+---
+
 ## Iterasi 6 — Blog (selesai: 2026-08-23)
 Status: Selesai
 
