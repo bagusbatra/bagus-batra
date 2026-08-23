@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\PortfolioController;
 use App\Models\SocialLink;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 class SocialLinkController extends Controller
@@ -54,6 +56,8 @@ class SocialLinkController extends Controller
 
         SocialLink::create($data);
 
+        Cache::forget(PortfolioController::SOCIAL_LINKS_CACHE_KEY);
+
         return redirect()->route('admin.social-links')->with('success', 'Social link baru berhasil ditambahkan.');
     }
 
@@ -66,12 +70,16 @@ class SocialLinkController extends Controller
     {
         $socialLink->update($this->validated($request));
 
+        Cache::forget(PortfolioController::SOCIAL_LINKS_CACHE_KEY);
+
         return redirect()->route('admin.social-links')->with('success', 'Social link berhasil diperbarui.');
     }
 
     public function destroy(SocialLink $socialLink): RedirectResponse
     {
         $socialLink->delete();
+
+        Cache::forget(PortfolioController::SOCIAL_LINKS_CACHE_KEY);
 
         return redirect()->route('admin.social-links')->with('success', 'Social link berhasil dihapus.');
     }
@@ -95,6 +103,11 @@ class SocialLinkController extends Controller
             [$a, $b] = [$socialLink->sort_order, $neighbour->sort_order];
             $socialLink->update(['sort_order' => $b]);
             $neighbour->update(['sort_order' => $a]);
+
+            // Iterasi 15: urutan tampil berubah, cache social_links_active
+            // (yang sudah terurut sort_order) jadi basi kalau tidak
+            // di-invalidate juga di sini, bukan cuma di store/update/destroy.
+            Cache::forget(PortfolioController::SOCIAL_LINKS_CACHE_KEY);
         }
 
         return redirect()->route('admin.social-links');

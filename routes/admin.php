@@ -98,14 +98,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Menus without a real feature yet — placeholder pages so the
         // sidebar never 404s while making the owning iteration explicit.
-        // [route name suffix => [menu title, "Segera Hadir" note]]
-        $placeholders = [
-            'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
-        ];
-
-        foreach ($placeholders as $slug => [$title, $iterationNote]) {
-            Route::get($slug, fn () => app(PlaceholderController::class)->show($title, $iterationNote))
-                ->name($slug);
+        // Iterasi 16 (Fase 3): diubah dari closure route jadi Controller@method
+        // supaya route:cache bisa dipakai di produksi (Laravel tidak bisa
+        // cache route berbasis Closure) — judul & catatan iterasi tiap slug
+        // sekarang ada di PlaceholderController::PLACEHOLDERS.
+        foreach (array_keys(PlaceholderController::PLACEHOLDERS) as $slug) {
+            Route::get($slug, [PlaceholderController::class, 'show'])->name($slug);
         }
     });
 });

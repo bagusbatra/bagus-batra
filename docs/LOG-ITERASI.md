@@ -29,6 +29,153 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 16 — Kesiapan Produksi & HTTP Delivery (selesai: 2026-08-23)
+Status: Selesai — **Fase 3 (Optimalisasi Performa), lanjutan Iterasi 13-15.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 5 Iterasi 16. **Kondisi awal sesi**: `git status` menunjukkan 6 file uncommitted (`app/Http/Controllers/Admin/ProfileController.php`, `SectionSettingController.php`, `SocialLinkController.php`, `app/Http/Controllers/PortfolioController.php`, `app/Models/SiteProfile.php`, `docs/LOG-ITERASI.md`) — persis perubahan Iterasi 15 yang belum di-commit user, sesuai catatan penutup entri Iterasi 15 di bawah. `git log` mengonfirmasi Iterasi 13 (`b433e69`) & 14 (`0ac9b64`) sudah ter-commit. Tidak diutak-atik; perubahan Iterasi 16 ditumpuk di atas working tree yang sudah ada, tetap **tidak ada `git add`/`git commit`** dijalankan di sesi ini.
+
+**1) Audit `env()` di luar `config/`**: `grep -rn "env(" app/ routes/ resources/` → **nihil** di ketiganya. Seluruh pemanggilan `env()` project ini sudah terbatas di file `config/*.php` (pola yang benar). Tidak ada perbaikan kode yang diperlukan untuk poin ini — dikonfirmasi bersih dari awal, bukan asumsi.
+
+**2) Audit closure route** — **ditemukan 1 masalah nyata**, diperbaiki: `routes/admin.php` baris 106-109 (sebelum perbaikan) mendaftarkan seluruh menu placeholder admin (saat ini hanya 1: `playground`) lewat closure yang menangkap `$title`/`$iterationNote` dari array PHP di scope route file:
+```php
+foreach ($placeholders as $slug => [$title, $iterationNote]) {
+    Route::get($slug, fn () => app(PlaceholderController::class)->show($title, $iterationNote))->name($slug);
+}
+```
+Laravel **tidak bisa** menyerialisasi Closure ke file cache route, jadi `route:cache` akan gagal/error selama route ini ada. Diperbaiki dengan memindah data title/note ke dalam `App\Http\Controllers\Admin\PlaceholderController::PLACEHOLDERS` (konstanta `public const`), dan route didaftarkan sebagai `Route::get($slug, [PlaceholderController::class, 'show'])->name($slug)` (murni Controller@method, tidak ada closure). `PlaceholderController::show()` sekarang menerima `Illuminate\Http\Request $request`, menurunkan slug dari `Str::after($request->route()->getName(), 'admin.')`, lalu lookup title/note dari konstanta di atas (fallback `Str::title($slug)` + pesan generik kalau suatu saat ada slug baru yang belum terdaftar di array, supaya tidak fatal error). Selain route ini, seluruh route lain di `routes/web.php` & `routes/admin.php` sudah 100% Controller method sejak awal (dikonfirmasi baca ulang kedua file lengkap) — tidak ada closure lain yang perlu diperbaiki.
+
+**3) Uji 3 command cache produksi** — server `php artisan serve` port 8140:
+- `php artisan config:cache` → **sukses**, tidak ada error (konsisten dengan hasil audit poin 1 — tidak ada `env()` liar yang akan jadi `null`).
+- `php artisan route:cache` → **sukses SETELAH perbaikan poin 2** (sebelum perbaikan, route closure di atas akan membuat command ini error — tidak sempat diuji dalam kondisi rusak karena perbaikan dilakukan lebih dulu sesuai urutan tugas "WAJIB diperbaiki dulu").
+- `php artisan view:cache` → **sukses**, tidak ada error, seluruh Blade (termasuk admin) berhasil dikompilasi.
+- **Verifikasi fungsional dengan ketiga cache aktif** (curl, port 8140): `GET /` → 200, `GET /projects` → 200, `GET /projects/lumina-saas` → 200, `GET /admin/login` → 200. Login admin sungguhan (`admin@bagusbatra.dev`/`Admin#12345` via cookie jar) → `POST /admin/login` 302 → `GET /admin/dashboard` 200, `GET /admin/projects` 200 (list, CRUD), `GET /admin/projects/1/edit` 200 (form CRUD). **Uji khusus route placeholder yang baru diperbaiki**: `GET /admin/playground` (logged in) → 200, isi halaman mengandung teks "Playground" (judul benar terlihat lewat lookup slug→title yang baru, bukan hardcode lama) — membuktikan perbaikan poin 2 tidak mengubah perilaku terlihat, hanya cara route didaftarkan.
+
+**4) Pengukuran waktu respons `GET /` before/after cache produksi:**
+
+| Skenario | Waktu respons (3x request) | Rata-rata |
+|---|---|---|
+| **Dengan cache produksi aktif** (config+route+view cache) | 0.359s / 0.349s / 0.339s | **~0.349s** |
+| **Tanpa cache** (langsung setelah `:clear`, request pertama memaksa Blade compile ulang semua view dari 0) | **12.365s** (run pertama, outlier compile) / 0.539s / 0.370s | run pertama dibuang sbg outlier tak representatif |
+| **Tanpa cache, steady-state** (Blade sudah ter-compile dari request sebelumnya, kondisi development sehari-hari) | 0.361s / 0.350s / 0.357s | ~0.356s |
+
+**Temuan jujur**: untuk request steady-state (Blade view sudah pernah dikompilasi sekali, config sudah pernah dibaca), selisih waktu respons `GET /` dengan vs tanpa cache produksi **sangat kecil** (~0.349s vs ~0.356s, dalam margin noise pengukuran lokal) — konsisten dengan temuan Iterasi 15 bahwa dataset & environment development ini terlalu kecil untuk menunjukkan gap besar. **Manfaat nyata yang justru terlihat jelas**: request PERTAMA setelah `view:clear` (skenario paling realistis untuk "deploy baru tanpa `view:cache`" — visitor pertama pasca-deploy akan menanggung compile Blade on-the-fly) makan **12.365 detik** — inilah tepatnya biaya yang dihindari `view:cache` dengan mem-precompile semua Blade sebelum traffic pertama masuk. Ini bukan angka fiktif, diukur langsung 1x lewat curl `-w "%{time_total}"` tepat setelah `php artisan view:clear`.
+
+**5) Environment development dibersihkan lagi setelah pengujian** — sesuai default tugas (bukan server produksi sungguhan): dijalankan `php artisan config:clear && php artisan route:clear && php artisan view:clear` di akhir sesi. Dikonfirmasi `bootstrap/cache/` tidak lagi berisi `config.php`/route cache (hanya `packages.php`/`services.php` bawaan Laravel yang memang selalu ada), dan `storage/framework/views/` kosong dari file `.php` hasil compile. Server `php artisan serve` dimatikan, dikonfirmasi request berikutnya connection-refused (`curl` exit code 7).
+
+### File/area utama yang berubah
+- `app/Http/Controllers/Admin/PlaceholderController.php` — tambah konstanta `PLACEHOLDERS` (title + catatan iterasi per slug), `show()` diubah menerima `Request` & menurunkan slug dari nama route (bukan lagi 2 parameter string dari closure).
+- `routes/admin.php` — route placeholder diubah dari closure jadi `Route::get($slug, [PlaceholderController::class, 'show'])->name($slug)`, supaya kompatibel `route:cache`.
+- `README.md` — bagian baru "Deploy ke Produksi": checklist `.env` produksi, `npm run build`, 3 command cache (+catatan `event:cache` opsional karena tidak ada listener kustom), wajib `:clear` sebelum `:cache` ulang tiap deploy (+shortcut `optimize`/`optimize:clear`), rekomendasi header `Cache-Control: public, max-age=31536000, immutable` untuk `public/build/assets/*` (dokumentasi konfigurasi server, tidak mengubah Laragon lokal), reminder `opcache.enable=1`.
+- `docs/LOG-ITERASI.md` — entri ini sendiri.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru — Iterasi 16 murni kesiapan produksi/dokumentasi + 1 perbaikan route. `docs/ERD.md` sengaja TIDAK diupdate sesuai instruksi eksplisit tugas (tidak ada perubahan skema).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+**Fungsional — via `php artisan serve` (port 8140) + `curl`, DENGAN config:cache+route:cache+view:cache aktif:**
+- `GET /` 200, `GET /projects` 200, `GET /projects/lumina-saas` 200, `GET /admin/login` 200.
+- Login admin sungguhan → `GET /admin/dashboard` 200, `GET /admin/projects` 200, `GET /admin/projects/1/edit` 200 (CRUD form).
+- `GET /admin/playground` (route yang baru diperbaiki dari closure) → 200, isi mengandung "Playground" — perilaku terlihat identik dengan sebelum perbaikan, hanya cara pendaftaran route yang berubah.
+- Ketiga command (`config:cache`, `route:cache`, `view:cache`) dijalankan tanpa error setelah perbaikan poin 2.
+- Environment development dikembalikan bersih: `config:clear`, `route:clear`, `view:clear` dijalankan di akhir, dikonfirmasi `bootstrap/cache/` & `storage/framework/views/` tidak lagi berisi file cache produksi.
+- Server dimatikan setelah verifikasi (dikonfirmasi request berikutnya connection-refused).
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user (lihat catatan Fase 3 di `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 2). Seluruh perubahan iterasi ini (2 file PHP/routes + README.md + entri log ini) ada di working tree sebagai uncommitted changes, di atas perubahan Iterasi 15 yang juga masih uncommitted.
+
+### Catatan untuk review
+- **Perbaikan wajib yang ditemukan**: closure route placeholder admin (`routes/admin.php`) — kalau tidak diperbaiki, `php artisan route:cache` akan gagal di produksi. Sudah diperbaiki & diverifikasi tidak mengubah perilaku terlihat (isi halaman placeholder identik).
+- Audit `env()` bersih dari awal — tidak ada perbaikan kode yang diperlukan untuk poin itu.
+- Selisih waktu respons steady-state dengan/tanpa cache produksi kecil untuk skala data & environment development ini (konsisten dengan temuan Iterasi 15 soal `CACHE_STORE=database`) — manfaat paling nyata & terukur ada di penghindaran biaya compile Blade request pertama pasca-deploy (12.365s → dihindari total oleh `view:cache`), bukan di request steady-state.
+- Header cache aset Vite & OPcache murni didokumentasikan di README (rekomendasi konfigurasi server produksi) — tidak ada perubahan konfigurasi Laragon lokal, sesuai batasan tugas.
+- Belum lanjut ke Iterasi 17 (Audit Ulang & Ringkasan Hasil) sesuai batasan tugas — berhenti di sini menunggu instruksi lanjut & commit manual dari user untuk Iterasi 13-16.
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` tidak diupdate (sesuai instruksi eksplisit tugas ini).
+
+---
+
+## Iterasi 15 — Query & Cache Layer (selesai: 2026-08-23)
+Status: Selesai — **Fase 3 (Optimalisasi Performa), lanjutan Iterasi 13-14.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 5 Iterasi 15. **Kondisi awal sesi**: `git status` bersih dan `git log` menunjukkan Iterasi 13 (`b433e69`) DAN Iterasi 14 (`0ac9b64`) keduanya SUDAH ter-commit — berbeda dari instruksi tugas yang menyebut Iterasi 14 "kemungkinan masih uncommitted". Tidak diutak-atik (tidak revert/amend); perubahan iterasi ini ditumpuk sebagai diff baru di atas `0ac9b64`, tetap **tidak ada `git add`/`git commit` dijalankan** di sesi ini.
+
+**1) Cek `CACHE_STORE` dulu (`.env`)**: `CACHE_STORE=database` — **bukan** file/Redis. Ini krusial untuk memahami hasil pengukuran di bawah (lihat poin 6).
+
+**2) Cache 3 data yang jarang berubah:**
+- `SiteProfile::current()` — logic cache ditaruh **DI DALAM model itu sendiri** (bukan controller), karena `current()` dipanggil dari beberapa tempat (controller publik, `Admin\ProfileController@edit`) dan singleton-nya paling rapi di-cache satu tempat. Key `site_profile`, `Cache::remember` TTL 3600 detik (1 jam).
+- `SocialLink::where('is_active', true)->orderBy('sort_order')->get()` — di-cache di `PortfolioController` (bukan model) karena ini query khusus untuk kebutuhan halaman index (filter+urutan tertentu), bukan singleton "current row" seperti `SiteProfile`. Key `social_links_active`, TTL 3600.
+- `SectionSetting::pluck('is_active', 'section_key')` — sama, di-cache di `PortfolioController`. Key `section_settings_map`, TTL 3600.
+
+**Bug ditemukan & diperbaiki saat implementasi — `serializable_classes = false`**: percobaan pertama meng-cache objek Eloquent Model/Collection langsung (`Cache::remember('site_profile', ..., fn() => SiteProfile::firstOrCreate(...))`) menghasilkan error nyata saat verifikasi: `TypeError: App\Models\SiteProfile::current(): Return value must be of type App\Models\SiteProfile, __PHP_Incomplete_Class returned`. Ditelusuri ke `config/cache.php` baris 134: `'serializable_classes' => false` — fitur keamanan Laravel versi ini yang **melarang unserialize objek PHP apa pun dari cache** (mencegah gadget-chain attack via `APP_KEY` bocor; dikonfirmasi baca `vendor/laravel/framework/src/Illuminate/Cache/DatabaseStore.php` baris 585-598, `unserialize($value, ['allowed_classes' => $this->serializableClasses])` — `false` berarti *no* classes diizinkan, PHP diam-diam mengembalikan `__PHP_Incomplete_Class` alih-alih error keras). Direproduksi manual via tinker (`Cache::put`+`Cache::get` objek Model → hasil rusak), lalu diperbaiki:
+- `SiteProfile::current()`: cache HANYA `getAttributes()` (array biasa, aman), lalu rehydrate ke instance Model lewat `(new static)->newFromBuilder($attributes)` — pola yang sama dipakai Eloquent sendiri saat hydrate hasil query, jadi hasil identik dgn `firstOrCreate()` (exists=true, cast normal), tanpa query DB saat cache HIT.
+- `$sectionActive`: cache `->pluck(...)->all()` (array biasa), bukan `Collection` mentah — semua pemakaian di Blade (`portfolio/index.blade.php`, `about.blade.php`) cuma akses `[]`, jadi array biasa berperilaku identik.
+- `$socialLinks`: sudah aman dari awal karena kode existing sudah `->toArray()` sebelum dikembalikan (tidak perlu perbaikan).
+
+Tidak mengubah `config/cache.php` — perbaikan dilakukan di level kode aplikasi (cache array, bukan objek), lebih konsisten dengan alasan keamanan yang sudah sengaja dipasang default Laravel, sesuai batasan "tidak menambah dependency/config besar baru kalau bisa dihindari".
+
+**Keputusan TTL — 1 jam (bukan `rememberForever`)**: meski invalidasi manual di poin 3 sudah dicek lengkap (semua method controller admin yang menyentuh 3 tabel ini teridentifikasi & di-invalidate), TTL wajar tetap dipasang sebagai jaring pengaman tambahan — bukan andalan utama — untuk mengantisipasi jalur penulisan data di luar controller (mis. `tinker`, seeder ulang, query manual) yang tidak lewat `Cache::forget`. Biaya TTL 1 jam sangat kecil (worst case: data basi maksimal 1 jam kalau ada jalur penulisan yang lolos), sementara `rememberForever` punya risiko "cache basi permanen sampai server restart/cache:clear manual" kalau suatu saat ada penambahan method admin baru yang lupa di-invalidate. Sesuai saran eksplisit di instruksi tugas untuk kasus "ragu ada titik simpan yang terlewat, lebih aman pakai TTL".
+
+**3) Invalidasi cache** — dicek SATU PER SATU seluruh method controller admin yang menyimpan ke `site_profiles`/`social_links`/`section_settings` (dibaca langsung dari kode, bukan asumsi):
+- `Admin\ProfileController@update` — satu-satunya method yang menyentuh `site_profiles` (tidak ada create/delete, ini singleton). Tambah `Cache::forget(SiteProfile::CACHE_KEY)` setelah `$profile->update($data)`.
+- `Admin\SocialLinkController` — 4 method mutasi: `store`, `update`, `destroy`, `move` (reorder swap `sort_order`). Ke-4nya ditambah `Cache::forget(PortfolioController::SOCIAL_LINKS_CACHE_KEY)` setelah save berhasil — `move` sengaja tidak diabaikan meski tidak eksplisit disebut nama fieldnya di rencana, karena reorder mengubah `sort_order` yang ikut menentukan isi cache (urutan tampil).
+- `Admin\SectionSettingController` — hanya `toggle` yang menyentuh `section_settings` (tidak ada create/delete/move — daftar section adalah set tetap yang di-seed, bukan CRUD bebas oleh admin, dicek lewat `routes/admin.php` yang cuma mendaftarkan route `index`+`toggle` untuk resource ini). Tambah `Cache::forget(PortfolioController::SECTION_SETTINGS_CACHE_KEY)` setelah `$sectionSetting->save()`.
+
+Cache key constants (`SiteProfile::CACHE_KEY`, `PortfolioController::SOCIAL_LINKS_CACHE_KEY`, `PortfolioController::SECTION_SETTINGS_CACHE_KEY`) dipakai bersama antara sisi baca & sisi invalidasi (bukan string literal yang diulang) supaya tidak ada typo key yang bikin invalidasi diam-diam gagal.
+
+**4) Perbaikan query featured project** — persis sesuai rencana: `Project::where('featured', true)->orderBy('sort_order')->get()` menggantikan pola lama (fetch semua baris via `Project::orderBy('sort_order')->get()` lalu filter `->where('featured', true)` di PHP). Fallback `Project::orderBy('sort_order')->take(3)->get()` hanya jalan kalau hasil pertama kosong — di database saat ini ada 3 project `featured=true` (`lumina-saas`, `aurora-commerce`, `zenith-design-system`), jadi fallback TIDAK pernah ter-trigger dalam kondisi normal, dikonfirmasi lewat query log (hanya 1 query `projects` per request, bukan 2).
+
+**5) Cache full-page index — DILEWATI, sesuai saran rencana.** Alasan: 5 dari 8 sumber data index (`Skill`, `Project`, `BlogPost`, `Experience`, `Testimonial`) TIDAK disentuh di iterasi ini dan masing-masing punya banyak titik CRUD admin terpisah (create/update/delete/reorder di 5 controller admin berbeda) yang semuanya harus di-invalidate lengkap kalau full-page cache dipasang — kompleksitas & risiko "cache basi karena ada 1 titik invalidasi yang lupa" jauh lebih tinggi dibanding manfaatnya untuk skala data sekarang (~5-9 baris per tabel). Prinsip "cache wajib auto-invalidate lengkap" (`RENCANA-OPTIMASI-PERFORMA.md` bagian 4) lebih mudah dipenuhi dgn cakupan sempit (3 model, 6 titik invalidasi total, semua sudah diverifikasi) daripada cakupan penuh (8 model, puluhan titik invalidasi tersebar di banyak controller). Cukup cache 3 data di poin 2 untuk iterasi ini.
+
+**6) Pengukuran before/after** — server `php artisan serve` port 8130/8131, `DB::listen()` sementara ditaruh di awal `PortfolioController@index` untuk hitung query (DIHAPUS lagi setelah tiap sesi pengukuran, dikonfirmasi `grep -rn "DB::listen" app/` nihil di kondisi akhir):
+
+| Skenario | Jumlah query `GET /` | Waktu respons (rata-rata) |
+|---|---|---|
+| **Before** (baseline, sebelum Iterasi 15) | **10** (8 domain: skills/projects-all/blog/experiences/testimonials/site_profile/social_links/section_settings + 2 session) | **0.375s** (avg 3x: 0.363/0.383/0.378) |
+| **After — cache DINGIN** (`cache:clear` lalu request pertama) | **16** (5 domain + 3 cache-select MISS + 3 cache-insert + 3 query sumber asli site_profile/social_links/section_settings + 2 session) | 0.522s (1x, wajar lebih lambat — cache MISS + 3x insert tambahan) |
+| **After — cache PANAS** (request berikutnya) | **10** (5 domain + 3 cache-select HIT + 2 session) | rata-rata ~0.42s (5x: 0.368/0.429/0.373/0.470/0.461) |
+
+**Temuan penting (jujur, bukan asumsi) — jumlah query cache PANAS TIDAK turun dari baseline (tetap 10)**: ini SESUAI EKSPEKTASI setelah cek `CACHE_STORE=database` di poin 1 di atas, TAPI berbeda dari asumsi naif di rencana ("cache panas harusnya jelas lebih sedikit query, 3 query hilang"). Penyebabnya: dengan cache **driver database**, membaca cache = tetap 1 query SQL sungguhan ke tabel `cache` (`select * from cache where key in (?)`) — bukan operasi in-memory/filesystem tanpa biaya seperti Redis/file cache. Jadi 3 query lama (site_profiles/social_links/section_settings) hanya **ditukar** jadi 3 query baru (cache lookup), bukan dihilangkan sungguhan, dan waktu respons pun nyaris sama (bahkan sedikit lebih lambat karena overhead layer Cache facade + unserialize) untuk dataset sekecil ini. Ini murni konsekuensi driver yang aktif di `.env` proyek ini, BUKAN bug implementasi — kalau `CACHE_STORE` di produksi nanti diganti ke `file`/`redis`/`memcached` (izin sudah ada di rencana bagian 6), 3 query itu benar-benar akan hilang tanpa perubahan kode apa pun (infrastruktur cache-nya sudah benar & auto-invalidating, tinggal ganti driver). Manfaat nyata yang TETAP didapat di iterasi ini terlepas dari driver: (a) query `projects` sekarang filter di level SQL (lebih sedikit baris ditransfer, lebih murah di query planner meski jumlah query tetap 1), dan (b) lapisan cache yang benar & ter-invalidasi otomatis sudah terpasang siap dipakai kapan pun driver diganti — bukan pekerjaan sia-sia.
+
+### File/area utama yang berubah
+- `app/Models/SiteProfile.php` — `current()` dibungkus `Cache::remember('site_profile', 3600, ...)`, cache `getAttributes()` (bukan objek Model) + rehydrate via `newFromBuilder()`; tambah konstanta `CACHE_KEY`.
+- `app/Http/Controllers/PortfolioController.php` — cache `$socialLinks` (key `social_links_active`) & `$sectionActive` (key `section_settings_map`, sebagai array bukan Collection) via `Cache::remember` TTL 3600; perbaikan query featured project (filter SQL, fallback bersyarat); tambah konstanta `SOCIAL_LINKS_CACHE_KEY`/`SECTION_SETTINGS_CACHE_KEY`.
+- `app/Http/Controllers/Admin/ProfileController.php` — `update()` tambah `Cache::forget(SiteProfile::CACHE_KEY)`.
+- `app/Http/Controllers/Admin/SocialLinkController.php` — `store`/`update`/`destroy`/`move` tambah `Cache::forget(PortfolioController::SOCIAL_LINKS_CACHE_KEY)`.
+- `app/Http/Controllers/Admin/SectionSettingController.php` — `toggle` tambah `Cache::forget(PortfolioController::SECTION_SETTINGS_CACHE_KEY)`.
+- `docs/LOG-ITERASI.md` — entri ini sendiri.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru — tabel `cache` sudah ada dari default Laravel (dipakai karena `CACHE_STORE=database`), bukan tabel baru yang dibuat iterasi ini. `docs/ERD.md` sengaja TIDAK diupdate sesuai instruksi eksplisit tugas (tidak ada perubahan skema).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+**Fungsional — via `php artisan serve` (port 8130 lalu 8131) + `curl`:**
+- `GET /` → 200 (cache dingin & panas, dicek terpisah). `GET /projects` → 200. `GET /projects/lumina-saas` → 200.
+- Data index dicek benar setelah perubahan: nama "Bagus Batra" muncul, 3 kartu project featured (`lumina-saas`/`aurora-commerce`/`zenith-design-system`, masing2 5 kemunculan sesuai jumlah link internal per kartu) tampil, project non-featured (`pulse-ai-workspace`) TIDAK tampil di index (0 kemunculan) — sesuai data `featured` aktual di DB. Social links: 5x `github.com`, 2x `linkedin.com`, 2x `twitter.com` — cocok jumlah baris aktif di DB. 9 section id (`hero`/`about`/`skills`/`projects`/`playground`/`experience`/`blog`/`testimonials`/`contact`) semua tampil (9/9 aktif, sama seperti state akhir Iterasi 12).
+- **Uji invalidasi cache nyata (3 skenario, semua via login admin sungguhan `admin@bagusbatra.dev`/`Admin#12345` + curl cookie jar, BUKAN clear cache manual):**
+  1. `Admin\ProfileController@update` — ubah `tagline_id` jadi marker `TEST-CACHE-INVALIDATION-MARKER-ITERASI15` → `GET /` langsung (request berikutnya, tanpa `cache:clear`) menampilkan marker (1 kemunculan) → dikembalikan ke tagline asli → `GET /` lagi mengandung tagline asli lagi, marker hilang (0 kemunculan). **Invalidasi `site_profile` berhasil.**
+  2. `Admin\SectionSettingController@toggle` — toggle section `testimonials` (id=8) nonaktif → `GET /` kehilangan `id="testimonials"` (0 match) → toggle balik aktif → `id="testimonials"` muncul lagi (1 match). **Invalidasi `section_settings_map` berhasil.**
+  3. `Admin\SocialLinkController@update` — ubah `name` GitHub jadi marker `TESTMARKER-GITHUB-15` → `GET /` langsung menampilkan marker (3 kemunculan) → dikembalikan ke `GitHub` → marker hilang (0 kemunculan), `github.com` tetap 5 kemunculan seperti semula. **Invalidasi `social_links_active` berhasil.**
+  - Semua 3 data dikonfirmasi kembali PERSIS ke state awal via tinker setelah tes: `SocialLink::find(1)->name` = `GitHub`, `SiteProfile::current()->tagline_id` = tagline asli, section `testimonials` = active, `SectionSetting::where('is_active', true)->count()` = 9/9 — tidak ada perubahan data permanen dari baseline akibat sesi pengujian ini.
+- **Bug ditemukan & diperbaiki SEBELUM verifikasi final** (lihat Ringkasan poin 2): percobaan awal cache objek Model/Collection langsung memicu `TypeError`/`__PHP_Incomplete_Class` — ditangkap saat pengukuran "after" pertama (muncul di `laravel.log` sebagai exception sungguhan, bukan lolos diam-diam), diperbaiki dengan cache array biasa, diverifikasi ulang bersih setelah perbaikan.
+- `storage/logs/laravel.log` dikosongkan sebelum setiap sesi pengukuran/verifikasi, dicek bersih (0 baris) di request akhir sesi ini (setelah `DB::listen` sementara dihapus).
+- `DB::listen` sementara (dipasang 2x untuk baseline & after) dikonfirmasi sudah dihapus total dari kode akhir — `grep -rn "DB::listen" app/` nihil.
+- Server `php artisan serve` dimatikan setelah verifikasi (dikonfirmasi request berikutnya `000`/connection refused).
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user (lihat catatan Fase 3 di `docs/RENCANA-OPTIMASI-PERFORMA.md` bagian 2). Seluruh perubahan iterasi ini (5 file PHP + entri log ini sendiri) ada di working tree sebagai uncommitted changes.
+
+### Catatan untuk review
+- **Temuan ketidaksesuaian instruksi vs kondisi nyata (lagi)**: tugas menyebut Iterasi 14 "kemungkinan masih uncommitted", tapi `git log` awal sesi menunjukkan Iterasi 13 & 14 **keduanya** sudah ter-commit (`b433e69`, `0ac9b64`). Tidak diambil tindakan terhadap commit-commit itu — working tree awal sesi ini BERSIH, perubahan Iterasi 15 murni diff baru di atasnya.
+- **Temuan arsitektur penting untuk iterasi/produksi berikutnya**: `config('cache.serializable_classes')` di-set `false` (default keamanan Laravel versi ini) — SIAPA PUN yang menambah `Cache::remember`/`Cache::put` di masa depan di project ini WAJIB menyimpan array/scalar, BUKAN objek Model/Collection/Eloquent langsung, atau akan diam-diam mendapat `__PHP_Incomplete_Class` saat cache HIT (bukan error saat SET, baru muncul saat GET — mudah lolos review kalau tidak dites eksplisit). Sudah didokumentasikan sebagai komentar kode di `SiteProfile.php` & `PortfolioController.php`.
+- **`CACHE_STORE=database` membuat manfaat pengurangan query TIDAK terlihat di angka query count untuk cache panas** (tetap 10, sama seperti baseline) — lihat penjelasan lengkap & jujur di poin 6 Ringkasan. Ini bukan kegagalan implementasi, murni karakteristik driver cache aktif saat ini. Tidak mengganti `CACHE_STORE` di iterasi ini (di luar scope — perubahan `.env`/infra bukan bagian dari Iterasi 15, dan bagian 6 rencana eksplisit menyebut "cukup Cache driver default Laravel (file/database, sesuai .env yang berjalan)").
+- Belum lanjut ke Iterasi 16 (Kesiapan Produksi & HTTP Delivery) sesuai batasan tugas — berhenti di sini menunggu instruksi lanjut.
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` tidak diupdate (sesuai instruksi eksplisit tugas ini).
+
+---
+
 ## Iterasi 14 — Optimasi Pemuatan Gambar (selesai: 2026-08-23)
 Status: Selesai — **Fase 3 (Optimalisasi Performa), lanjutan Iterasi 13.**
 

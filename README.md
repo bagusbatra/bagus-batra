@@ -113,3 +113,52 @@ Tidak ada halaman registrasi admin publik dan tidak ada reset password via email
 - Form kontak publik melakukan submit sungguhan (POST `/contact`) tersimpan ke tabel `contact_messages` (`is_read = false` secara default), lalu menampilkan pesan sukses via session flash. Pesan masuk dikelola dari menu admin "Pesan Masuk" — tandai dibaca otomatis saat dibuka, hapus dengan konfirmasi.
 - Upload gambar (avatar profil, avatar testimoni, cover blog, gambar project) disimpan di `storage/app/public` dan diakses publik lewat symlink `public/storage` (langkah 6 di atas) — field terkait juga menerima URL gambar langsung sebagai alternatif upload file.
 - Riwayat lengkap pembangunan admin panel (Iterasi 0-9, Fase 1) dan halaman Projects terpisah (Iterasi 10-12, Fase 2) — lihat `docs/RENCANA-PENGEMBANGAN.md` untuk rencana & keputusan arsitektur, `docs/LOG-ITERASI.md` untuk detail teknis per iterasi.
+
+## Deploy ke Produksi
+
+Ditulis di Iterasi 16 (Fase 3, `docs/RENCANA-OPTIMASI-PERFORMA.md`), setelah diaudit & diuji langsung bahwa ketiga command cache produksi di bawah aman dipakai untuk project ini (tidak ada `env()` dipanggil langsung dari luar `config/*.php`, tidak ada route berbasis closure). Langkah ini di LUAR langkah "Menjalankan Project" di atas (yang untuk development) — jalankan tambahan ini saat deploy ke server produksi sungguhan.
+
+### 1. Environment (`.env` produksi)
+- `APP_ENV=production`
+- `APP_DEBUG=false` — **wajib**, kalau tetap `true` di produksi, stack trace error (termasuk isi query/credential) bisa bocor ke publik.
+- Pastikan `APP_KEY` sudah di-generate (`php artisan key:generate`) dan **tidak** memakai key yang sama dengan environment development/staging.
+- Seluruh koneksi eksternal (DB, mail, dsb.) dibaca lewat file `config/*.php` yang memanggil `env(...)`, BUKAN dipanggil `env()` langsung dari controller/model — sudah diverifikasi bersih di Iterasi 16 (lihat `docs/LOG-ITERASI.md`), kondisi ini WAJIB dipertahankan di kode baru manapun supaya `config:cache` di langkah 3 tidak diam-diam menghasilkan nilai `null`.
+
+### 2. Build aset front-end
+```bash
+npm install
+npm run build
+```
+Pakai `npm run build`, **bukan** `npm run dev` — `build` menghasilkan file production-ready di `public/build/` (minified, ter-hash) yang dibaca `@vite([...])` di Blade lewat `public/build/manifest.json`; `dev` menyalakan Vite dev server (hot-reload) yang tidak dimaksudkan untuk publik.
+
+### 3. Cache produksi Laravel
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+- `config:cache` — menggabungkan seluruh file `config/*.php` (hasil evaluasi `env()`-nya) jadi satu file di `bootstrap/cache/config.php`, supaya Laravel tidak perlu baca ulang `.env` tiap request.
+- `route:cache` — mem-build ulang seluruh definisi route jadi satu file cache. Diverifikasi tidak ada route berbasis Closure di `routes/web.php`/`routes/admin.php` (satu closure route placeholder menu "Playground" ditemukan & diperbaiki jadi Controller method di Iterasi 16, lihat `App\Http\Controllers\Admin\PlaceholderController`), jadi command ini aman dipakai.
+- `view:cache` — pre-compile semua file Blade (publik & admin) supaya request pertama tidak menanggung biaya compile on-the-fly.
+- Project ini tidak punya listener event kustom (`app/Listeners/` tidak ada, `AppServiceProvider::boot()` kosong, Laravel 13 tidak lagi memakai `EventServiceProvider`) — `php artisan event:cache` **opsional**, boleh dijalankan (tidak akan menghasilkan apa pun yang berarti) tapi tidak wajib untuk project ini saat ini. Kalau ke depan ditambah event/listener kustom, sertakan `event:cache` di urutan di atas.
+
+**Setiap kali deploy ulang kode baru**, cache-cache di atas WAJIB di-`:clear` dulu sebelum `:cache` lagi (kalau tidak, perubahan kode/route/view/config yang baru di-deploy tidak akan kepakai — server tetap menyajikan versi cache lama):
+```bash
+php artisan config:clear && php artisan route:clear && php artisan view:clear
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+```
+Laravel 13 menyediakan shortcut gabungan untuk pola di atas:
+```bash
+php artisan optimize        # setara config:cache + route:cache + view:cache (+ event:cache bila ada listener)
+php artisan optimize:clear  # clear semua cache di atas sekaligus
+```
+
+### 4. Header cache untuk aset Vite (konfigurasi web server, bukan kode Laravel)
+Setiap file di `public/build/assets/*` (hasil `npm run build`) sudah punya hash unik di nama filenya (mis. `app-CXyZ1234.css`, `public-AbCd5678.js`) — setiap kali isi file berubah, nama filenya ikut berubah. Karena itu, file-file ini **aman** diberi header cache jangka panjang & `immutable` oleh web server produksi (Nginx/Apache/Laragon), misalnya:
+```
+Cache-Control: public, max-age=31536000, immutable
+```
+Browser tidak akan pernah menyajikan versi lama secara tidak sengaja — kalau isinya berubah, `manifest.json` hasil build otomatis menunjuk ke nama file hash yang baru. Ini rekomendasi konfigurasi di level web server (virtual host/`.htaccess`/`nginx.conf`), bukan sesuatu yang diatur dari kode Laravel — cukup jadi catatan untuk siapa pun yang menyiapkan server produksi nanti; **tidak diubah** di konfigurasi Laragon lokal project ini.
+
+### 5. OPcache PHP (pengaturan `php.ini`, bukan kode aplikasi)
+Aktifkan `opcache.enable=1` (dan `opcache.validate_timestamps=0` bila deploy lewat proses build/release yang jelas, supaya OPcache tidak mengecek perubahan file tiap request) di `php.ini` server produksi — mengurangi biaya parse & compile file PHP di tiap request secara signifikan. Ini pengaturan PHP di level server, di luar kendali kode aplikasi, cukup jadi reminder deployment.

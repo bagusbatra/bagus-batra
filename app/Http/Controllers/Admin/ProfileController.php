@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SiteProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -63,6 +64,11 @@ class ProfileController extends Controller
         unset($data['avatar_url'], $data['avatar_file'], $data['secondary_avatar_url'], $data['secondary_avatar_file']);
 
         $profile->update($data);
+
+        // Iterasi 15 (Fase 3): invalidasi cache SiteProfile::current() supaya
+        // halaman publik langsung menampilkan data terbaru, bukan versi lama
+        // yang masih tersimpan di cache sampai TTL 1 jam habis.
+        Cache::forget(SiteProfile::CACHE_KEY);
 
         return redirect()->route('admin.profile')->with('success', 'Profil & Hero berhasil diperbarui.');
     }

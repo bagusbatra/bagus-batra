@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\PortfolioController;
 use App\Models\SectionSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 class SectionSettingController extends Controller
@@ -30,6 +32,8 @@ class SectionSettingController extends Controller
     {
         $sectionSetting->is_active = ! $sectionSetting->is_active;
         $sectionSetting->save();
+
+        Cache::forget(PortfolioController::SECTION_SETTINGS_CACHE_KEY);
 
         return response()->json([
             'success' => true,
