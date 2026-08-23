@@ -60,7 +60,7 @@ Menu "Projects" (placeholder sejak Iterasi 0) sekarang CRUD penuh — iterasi pa
   - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
 
 ### Commit
-- (diisi setelah commit dibuat)
+- `ec7d49b` — Iterasi 4: CRUD Projects dengan repeater tags/metrics/highlights/tech_stack
 
 ### Catatan untuk review
 - Field `client` sengaja dibiarkan nullable di form (beberapa project publik memang tanpa client / "Open Project" ditampilkan di modal via fallback `x-text="... || 'Open Project'"` yang sudah ada di `project-modal.blade.php` — tidak diubah, form admin tinggal mengikuti perilaku itu).
