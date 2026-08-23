@@ -134,3 +134,57 @@ Setiap iterasi ditutup dengan: migrasi dijalankan bersih, seeder (bila ada) jala
 - Apakah 4 kartu "prinsip kerja" di About perlu jadi CRUD juga, atau tetap statis? (dikonfirmasi di Iterasi 3)
 - Apakah toggle Pengaturan Section perlu tombol "Simpan" eksplisit atau auto-save saat switch diklik? (default: auto-save, dikoreksi bila kurang pas)
 - Apakah perlu halaman "ubah password admin" di Fase 1, atau cukup lewat `php artisan tinker`? (default: disediakan halaman sederhana ubah password di Iterasi 0/9, bisa disesuaikan)
+
+---
+
+# Fase 2 — Halaman Projects Terpisah & Perapian Data
+
+Status: **Draft — dieksekusi otomatis berurutan (Iterasi 10→12) sesuai instruksi user "lanjut ke fase 2", tanpa jeda review per-iterasi**, mengikuti pola yang sama seperti Fase 1. Ditulis: 2026-08-23, setelah Fase 1 (Iterasi 0-9) tuntas.
+
+## 9. Tujuan Fase 2
+
+Saat ini, satu-satunya cara melihat detail sebuah project adalah lewat modal on-page ("Detail Case Study") di section Projects pada halaman index — tidak bisa di-bookmark, tidak bisa dibagikan sebagai link langsung, dan tidak SEO-friendly. Fase 2 mengubah ini jadi halaman sungguhan:
+
+- **Halaman listing Projects** (`/projects`) — katalog lengkap semua project, terpisah dari halaman index.
+- **Halaman detail Project** (`/projects/{project_key}`) — halaman penuh per project, menggantikan modal.
+- **Merapikan halaman index** — section Projects di index jadi highlight/preview (bukan menampilkan seluruh project), dengan CTA ke halaman listing lengkap; sekaligus audit & rapikan data/tampilan yang mungkin masih kurang pas setelah migrasi ke database di Fase 1.
+
+## 10. Keputusan arsitektur untuk Fase 2
+
+| Area | Keputusan |
+|---|---|
+| Routing | `GET /projects` → listing (nama route `projects.index`). `GET /projects/{project:project_key}` → detail (nama route `projects.show`, route-model-binding pakai kolom `project_key`, bukan `id`, supaya URL rapi mis. `/projects/lumina-saas`). |
+| Modal case-study di index | **Dihapus** (`project-modal.blade.php` + Alpine store terkait), digantikan navigasi sungguhan ke `/projects/{key}`. Tombol "Detail Case Study" di kartu project (baik di index maupun listing) jadi `<a>` biasa ke halaman detail, bukan lagi trigger modal. Alasan: URL bisa dibagikan/di-bookmark, SEO meta per project, tombol back browser bekerja natural — sejalan dengan tujuan "merapikan". |
+| Konten halaman detail | Mereplikasi SEMUA konten yang sebelumnya ada di 3 tab modal (Overview & Solusi, Arsitektur Stack, Simulasi Interaktif) sebagai satu halaman penuh — tab tetap dipertahankan sebagai UI pattern (Alpine, tanpa reload) di dalam halaman, karena kontennya memang natural terbagi 3 kelompok. Tambahan: breadcrumb (Beranda → Projects → judul project), tombol "Kembali ke Semua Proyek", dan blok "Project Lainnya" (2-3 project lain sebagai related-link, exclude project yang sedang dibuka). |
+| Section Projects di index | Diubah jadi highlight: tampilkan hanya project dengan `featured = true` (fallback: 3 project pertama berdasar `sort_order` bila featured kosong), filter kategori tetap ada tapi beroperasi di dalam subset featured itu, ditambah tombol CTA "Lihat Semua Proyek" menuju `/projects`. Kartu project tetap sama persis secara visual (tidak dirombak), hanya sumber data & tujuan tombol detail yang berubah. |
+| Halaman listing `/projects` | Reuse layout/partial navbar+footer+ambient background dari halaman index (bukan dibuat dari nol), grid kartu project SEMUA data (bukan hanya featured), filter kategori (sama seperti yang ada di index), pagination Laravel bila project makin banyak (>12 misalnya — sekarang cuma 5, tapi pola pagination tetap dipasang sejak awal supaya scalable), dukung toggle bahasa ID/EN & tema visual (frosted-glass) yang identik dengan situs utama. |
+| Section toggle | Section `projects` di `section_settings` sekarang mengontrol **blok highlight di index**, bukan mematikan `/projects` & `/projects/{key}` (halaman project tetap bisa diakses langsung via URL meski highlight di index dimatikan — konsisten dengan halaman lain yang tetap "ada" walau tidak ditonjolkan di navigasi utama). |
+| SEO & meta | Halaman detail project pakai `<title>` dan `<meta name="description">` dinamis dari `title`/`tagline` project, plus Open Graph tag dasar (`og:title`, `og:description`, `og:image` dari `image` project) — perbaikan nyata dibanding modal yang tidak terindeks search engine. |
+| Data cleanup (index) | Audit menyeluruh isi halaman index pasca-migrasi Fase 1: pastikan tidak ada teks "null"/kosong yang bocor ke tampilan (mis. kalau admin belum isi field opsional), gambar broken (URL tidak valid) ditangani dengan fallback placeholder, line-clamp/truncation teks masih rapi untuk konten terpanjang di database saat ini, label kategori & badge konsisten kapitalisasi/ejaannya, tautan demo/github yang kosong tidak menampilkan tombol kosong. |
+
+## 11. Rincian iterasi Fase 2
+
+### Iterasi 10 — Routing & Halaman Listing Projects
+- Controller publik baru `App\Http\Controllers\ProjectPageController` (atau tambah method di `PortfolioController` — putuskan yang lebih rapi saat implementasi) dengan method `index` untuk `/projects`.
+- View `resources/views/projects/index.blade.php` — reuse layout utama (navbar, footer, ambient background, lang store), grid semua project + filter kategori + pagination.
+- Update section Projects di `resources/views/portfolio/partials/projects.blade.php`: filter ke featured-only/3 pertama, tambah tombol "Lihat Semua Proyek" ke `/projects`, tombol "Detail Case Study" tiap kartu diarahkan (sementara masih boleh ke modal lama) — modal baru benar-benar dicabut di Iterasi 11 sekalian dengan detail page supaya tidak ada state transisi yang rusak.
+- **Selesai bila**: `/projects` menampilkan seluruh project dengan filter & pagination berfungsi, index menampilkan subset featured + CTA yang benar mengarah ke `/projects`.
+
+### Iterasi 11 — Halaman Detail Project & Pencabutan Modal
+- Route `GET /projects/{project:project_key}`, controller method `show`.
+- View `resources/views/projects/show.blade.php` — replikasi penuh 3 tab modal (Overview, Arsitektur, Preview) sebagai halaman, breadcrumb, tombol kembali, blok related projects, meta tag SEO/OG dinamis.
+- Cabut `project-modal.blade.php` dan seluruh wiring Alpine terkait (store, `@json` embed project list untuk modal) dari layout & partial projects — ganti tombol "Detail Case Study" di SEMUA tempat (index highlight & listing `/projects`) jadi `<a href="{{ route('projects.show', $project) }}">`.
+- **Selesai bila**: klik "Detail Case Study" di manapun membuka halaman penuh `/projects/{key}` (bukan modal), URL bisa direfresh langsung & tetap menampilkan konten yang sama, tidak ada sisa kode modal project yang mati (dead code) di JS/Blade.
+
+### Iterasi 12 — Merapikan Data & Audit Akhir
+- Audit & perbaikan sesuai baris "Data cleanup (index)" di bagian 10 — jalankan pengecekan terhadap seluruh data project/blog/testimonial/skill/experience yang ada saat ini di database (bukan cuma index, sekalian cek halaman `/projects` & `/projects/{key}` baru).
+- Pastikan section toggle (`section_settings`) tetap bekerja benar untuk model baru ini (mematikan highlight index tidak mematikan `/projects`).
+- Regresi penuh: halaman index, `/projects`, `/projects/{key}` untuk SETIAP project yang ada, toggle bahasa ID/EN di ketiga jenis halaman, responsif mobile/tablet, reveal-on-scroll konsisten di halaman baru, admin CRUD Projects (Iterasi 4 lama) dicek masih sinkron dengan struktur baru (mis. tombol "Lihat di halaman publik" dari admin, kalau ada, mengarah ke URL yang benar — tambahkan kalau belum ada, ini quick-win yang masuk akal).
+- Update `README.md` bila ada route/halaman baru yang perlu didokumentasikan.
+- **Selesai bila**: seluruh regresi hijau, tidak ada dead code modal project tersisa, data yang tampil di 3 jenis halaman publik (index/listing/detail) bersih & konsisten.
+
+## 12. Yang TIDAK termasuk Fase 2 (sengaja ditunda)
+
+- Halaman listing/detail terpisah untuk Blog (artikel blog TETAP pakai modal seperti sekarang — hanya Projects yang diubah, sesuai instruksi eksplisit "halaman indeks, halaman projects, dan halaman detail projects").
+- Comment system, related-content algorithm yang canggih (related projects cukup random/kategori sama, bukan rekomendasi pintar).
+- Sitemap.xml / robots.txt / structured data (JSON-LD) — perbaikan SEO dasar (title/meta/OG) saja yang termasuk scope ini.
