@@ -81,6 +81,9 @@
                         </div>
 
                         <div class="flex items-center gap-1.5 shrink-0">
+                            <a href="{{ route('projects.show', $project) }}" target="_blank" rel="noopener noreferrer" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/80 rounded-lg transition-colors" title="Lihat di halaman publik">
+                                <x-icon name="external-link" class="w-4 h-4" />
+                            </a>
                             <a href="{{ route('admin.projects.edit', $project) }}" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/80 rounded-lg transition-colors" title="Edit">
                                 <x-icon name="file-code" class="w-4 h-4" />
                             </a>

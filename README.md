@@ -1,6 +1,8 @@
 # Bagus Batra — Portfolio (Laravel)
 
-Portfolio & tech blog Bagus Batra ("Senior Web Developer & Technical Writer"), dibangun sebagai aplikasi **Laravel** murni: Blade templating + [Alpine.js](https://alpinejs.dev) untuk seluruh interaktivitas client-side (toggle bahasa ID/EN, modal CV/proyek/artikel, filter kategori, scroll-spy navbar, mobile drawer, dsb.) dan **Tailwind CSS v4** untuk styling. Tidak ada React/Vue di project ini.
+Portfolio & tech blog Bagus Batra ("Senior Web Developer & Technical Writer"), dibangun sebagai aplikasi **Laravel** murni: Blade templating + [Alpine.js](https://alpinejs.dev) untuk seluruh interaktivitas client-side (toggle bahasa ID/EN, modal CV/artikel, filter kategori, scroll-spy navbar, mobile drawer, dsb.) dan **Tailwind CSS v4** untuk styling. Tidak ada React/Vue di project ini.
+
+Sejak Fase 2, **Projects** punya halaman publik sungguhan (bukan lagi modal on-page): katalog lengkap di `/projects` dan detail per proyek di `/projects/{project_key}` (mis. `/projects/lumina-saas`), dengan URL yang bisa di-bookmark/dibagikan dan meta tag SEO (title/description/Open Graph) dinamis per proyek. Section Projects di halaman utama (`/`) sekarang hanya menampilkan highlight (proyek `featured`) dengan tombol "Lihat Semua Proyek" menuju `/projects`. Blog masih memakai modal on-page seperti sebelumnya (di luar scope Fase 2).
 
 Seluruh konten yang tampil di halaman publik (`/`) — profil & hero, social links, skills, projects, experience, blog, testimonials, pesan kontak, dan status aktif/nonaktif tiap section — dikelola lewat **admin panel** (`/admin`) yang dibangun khusus untuk project ini (bukan template pihak ketiga), dengan data tersimpan di database **MySQL** via Eloquent models + migrations + seeders. Tidak ada lagi data yang hidup di file config statis.
 
@@ -77,11 +79,13 @@ Tidak ada halaman registrasi admin publik dan tidak ada reset password via email
 ## Struktur Penting
 
 ### Halaman publik
-- `app/Http/Controllers/PortfolioController.php` — merender halaman utama, membaca profil/social links/section-status dari database
+- `app/Http/Controllers/PortfolioController.php` — merender halaman utama (`/`), membaca profil/social links/section-status dari database; section Projects di sini hanya menampilkan proyek `featured` (fallback 3 pertama by `sort_order` bila belum ada yang featured)
+- `app/Http/Controllers/ProjectPageController.php` — halaman Projects terpisah: `index()` untuk katalog lengkap `/projects` (paginasi + filter kategori), `show()` untuk detail `/projects/{project_key}` (route-model-binding by `project_key`, lihat `routes/web.php`) + related projects
 - `app/Http/Controllers/ContactMessageController.php` — menangani submit form kontak (POST `/contact`)
-- `resources/views/layouts/app.blade.php` — layout utama (head, scroll progress bar, ambient background, floating widget, modal global)
+- `resources/views/layouts/app.blade.php` — layout utama (head dengan title/meta/OG dinamis via `@section('meta_title'|'meta_description'|'meta_image')`, scroll progress bar, ambient background, floating widget, modal global)
 - `resources/views/portfolio/index.blade.php` — halaman utama, meng-include semua partial section (tiap section dibungkus pengecekan `section_settings.is_active`)
-- `resources/views/portfolio/partials/` — satu file per section (navbar, hero, about, skills, projects, playground, experience, blog, testimonials, contact, footer) + modal (cv-modal, project-modal, article-modal)
+- `resources/views/portfolio/partials/` — satu file per section (navbar, hero, about, skills, projects [highlight + CTA ke `/projects`], playground, experience, blog, testimonials, contact, footer) + modal (cv-modal, article-modal — modal proyek sudah dicabut di Fase 2, diganti halaman sungguhan)
+- `resources/views/projects/index.blade.php`, `resources/views/projects/show.blade.php` — halaman katalog & detail Projects (Fase 2), reuse `layouts.app` yang sama dengan `/`
 
 ### Admin panel (`/admin`)
 - `app/Http/Controllers/Admin/` — satu controller per menu (`AuthController`, `DashboardController`, `ProfileController`, `SocialLinkController`, `SkillController`, `ProjectController`, `ExperienceController`, `BlogPostController`, `TestimonialController`, `MessageController`, `SectionSettingController`, `PlaceholderController` untuk menu Playground yang memang tanpa data tersimpan)
@@ -106,4 +110,4 @@ Tidak ada halaman registrasi admin publik dan tidak ada reset password via email
 - Konten panjang (deskripsi proyek, isi artikel blog, achievement pengalaman kerja) hanya berbahasa Indonesia, sesuai data sumber asli.
 - Form kontak publik melakukan submit sungguhan (POST `/contact`) tersimpan ke tabel `contact_messages` (`is_read = false` secara default), lalu menampilkan pesan sukses via session flash. Pesan masuk dikelola dari menu admin "Pesan Masuk" — tandai dibaca otomatis saat dibuka, hapus dengan konfirmasi.
 - Upload gambar (avatar profil, avatar testimoni, cover blog, gambar project) disimpan di `storage/app/public` dan diakses publik lewat symlink `public/storage` (langkah 6 di atas) — field terkait juga menerima URL gambar langsung sebagai alternatif upload file.
-- Riwayat lengkap pembangunan admin panel (9 iterasi, Fase 1 — lihat `docs/RENCANA-PENGEMBANGAN.md`) dan seluruh detail keputusan teknis per iterasi ada di `docs/LOG-ITERASI.md`.
+- Riwayat lengkap pembangunan admin panel (Iterasi 0-9, Fase 1) dan halaman Projects terpisah (Iterasi 10-12, Fase 2) — lihat `docs/RENCANA-PENGEMBANGAN.md` untuk rencana & keputusan arsitektur, `docs/LOG-ITERASI.md` untuk detail teknis per iterasi.

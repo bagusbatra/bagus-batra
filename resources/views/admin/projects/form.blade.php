@@ -22,10 +22,19 @@
         <a href="{{ route('admin.projects') }}" class="p-2 text-slate-400 hover:text-slate-800 hover:bg-white/70 rounded-xl transition-colors">
             <x-icon name="arrow-left" class="w-4.5 h-4.5" />
         </a>
-        <div>
+        <div class="flex-1">
             <h2 class="text-xl font-extrabold text-slate-900">{{ $project->exists ? 'Edit Project' : 'Tambah Project' }}</h2>
             <p class="text-sm text-slate-500">{{ $project->exists ? 'Perbarui data '.$project->title : 'Isi data studi kasus proyek baru.' }}</p>
         </div>
+        {{-- Iterasi 12 (Fase 2): quick-win ke halaman publik sekarang halaman
+             sungguhan (bukan modal lagi sejak Iterasi 11), jadi ada URL nyata
+             untuk ditautkan dari admin. --}}
+        @if ($project->exists)
+            <a href="{{ route('projects.show', $project) }}" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-600 hover:text-indigo-600 bg-white/70 hover:bg-white rounded-xl border border-white/90 shadow-2xs transition-colors">
+                <x-icon name="external-link" class="w-3.5 h-3.5" />
+                Lihat di Halaman Publik
+            </a>
+        @endif
     </div>
 
     <form
