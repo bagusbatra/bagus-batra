@@ -10,11 +10,52 @@ use Illuminate\View\View;
 
 class SkillController extends Controller
 {
-    public function index(): View
-    {
-        $skills = Skill::orderBy('sort_order')->get();
+    public const CATEGORIES = [
+        'frontend' => 'Frontend',
+        'backend' => 'Backend',
+        'devops' => 'DevOps & Cloud',
+        'tools' => 'Tools & UI',
+    ];
 
-        return view('admin.skills.index', compact('skills'));
+    /**
+     * Search + category filter — added in Iterasi 9 for consistency with
+     * the other list/table admin pages (Projects/Blog/Experience/
+     * Testimonials all have this same search+filter form; Skills was the
+     * one CRUD without it, see docs/LOG-ITERASI.md Iterasi 9). No
+     * pagination here on purpose: the dataset is small and bounded
+     * (fixed tech stack, reordered manually with up/down buttons), same
+     * reasoning already applied to Social Links.
+     */
+    public function index(Request $request): View
+    {
+        $search = trim((string) $request->query('search', ''));
+        $categoryFilter = trim((string) $request->query('category', ''));
+
+        $query = Skill::query();
+
+        if ($search !== '') {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        if ($categoryFilter !== '') {
+            $query->where('category', $categoryFilter);
+        }
+
+        $skills = $query->orderBy('sort_order')->get();
+
+        return view('admin.skills.index', [
+            'skills' => $skills,
+            'search' => $search,
+            'categoryFilter' => $categoryFilter,
+            'categories' => self::CATEGORIES,
+            // Global (unfiltered) boundaries — used to disable the up/down
+            // buttons only at the *true* first/last row, not just the
+            // first/last row of the current filtered view (Iterasi 9 fix;
+            // filtering didn't exist yet when the disabled-at-loop-first/
+            // last logic was first written).
+            'minSortOrder' => (int) (Skill::min('sort_order') ?? 0),
+            'maxSortOrder' => (int) (Skill::max('sort_order') ?? 0),
+        ]);
     }
 
     public function create(): View

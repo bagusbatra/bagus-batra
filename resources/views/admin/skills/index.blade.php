@@ -32,6 +32,24 @@
         <span>4 kartu "Prinsip Kerja" (Performance-First, Aksesibilitas, dst) di atas grid Skills pada halaman publik masih konten statis di Blade — bukan bagian dari CRUD ini. Lihat catatan keputusan di <code class="font-mono">docs/LOG-ITERASI.md</code> (Iterasi 3).</span>
     </div>
 
+    {{-- Search & Filter --}}
+    <form data-reveal method="GET" action="{{ route('admin.about-skills') }}" class="bg-white/60 backdrop-blur-xl rounded-3xl p-4 sm:p-5 border border-white/80 shadow-2xs flex flex-col sm:flex-row gap-3">
+        <div class="relative flex-1">
+            <x-icon name="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input type="text" name="search" value="{{ $search }}" placeholder="Cari nama skill..." class="w-full pl-10 pr-4 py-2.5 bg-white/70 backdrop-blur-md rounded-xl border border-white/90 text-sm text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs transition-colors" />
+        </div>
+        <select name="category" class="px-4 py-2.5 bg-white/70 backdrop-blur-md rounded-xl border border-white/90 text-sm text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs">
+            <option value="">Semua Kategori</option>
+            @foreach ($categories as $value => $categoryLabel)
+                <option value="{{ $value }}" @selected($categoryFilter === $value)>{{ $categoryLabel }}</option>
+            @endforeach
+        </select>
+        <button type="submit" class="px-5 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer">Filter</button>
+        @if ($search || $categoryFilter)
+            <a href="{{ route('admin.about-skills') }}" class="px-5 py-2.5 bg-white/70 hover:bg-white text-slate-600 text-sm font-bold rounded-xl border border-white/90 transition-colors text-center">Reset</a>
+        @endif
+    </form>
+
     <div
         data-reveal
         x-data="{ modalOpen: false, deleteUrl: '', deleteLabel: '' }"
@@ -42,7 +60,7 @@
         </div>
 
         @if ($skills->isEmpty())
-            <div class="py-16 text-center text-sm text-slate-400">Belum ada skill. Klik "Tambah Skill" untuk menambahkan.</div>
+            <div class="py-16 text-center text-sm text-slate-400">{{ $search || $categoryFilter ? 'Tidak ada skill yang cocok dengan filter ini.' : 'Belum ada skill. Klik "Tambah Skill" untuk menambahkan.' }}</div>
         @else
             <ul class="divide-y divide-slate-200/70">
                 @foreach ($skills as $skill)
@@ -52,14 +70,14 @@
                                 <form method="POST" action="{{ route('admin.about-skills.move', $skill) }}">
                                     @csrf @method('PATCH')
                                     <input type="hidden" name="direction" value="up" />
-                                    <button type="submit" @if($loop->first) disabled @endif class="block text-slate-400 hover:text-indigo-600 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer p-0.5" title="Naikkan urutan">
+                                    <button type="submit" @if($skill->sort_order <= $minSortOrder) disabled @endif class="block text-slate-400 hover:text-indigo-600 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer p-0.5" title="Naikkan urutan">
                                         <x-icon name="arrow-up" class="w-3.5 h-3.5" />
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ route('admin.about-skills.move', $skill) }}">
                                     @csrf @method('PATCH')
                                     <input type="hidden" name="direction" value="down" />
-                                    <button type="submit" @if($loop->last) disabled @endif class="block text-slate-400 hover:text-indigo-600 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer p-0.5" title="Turunkan urutan">
+                                    <button type="submit" @if($skill->sort_order >= $maxSortOrder) disabled @endif class="block text-slate-400 hover:text-indigo-600 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer p-0.5" title="Turunkan urutan">
                                         <x-icon name="arrow-up" class="w-3.5 h-3.5 rotate-180" />
                                     </button>
                                 </form>

@@ -10,11 +10,36 @@ use Illuminate\View\View;
 
 class SocialLinkController extends Controller
 {
-    public function index(): View
+    /**
+     * Light search — added in Iterasi 9 for consistency (RENCANA-PENGEMBANGAN.md
+     * already called for "list + search ringan" here, but no search box had
+     * actually been wired up since Iterasi 2, see docs/LOG-ITERASI.md Iterasi 9).
+     * No category filter (no meaningful category field on this model) and no
+     * pagination (short list, reordered manually with up/down buttons).
+     */
+    public function index(Request $request): View
     {
-        $socialLinks = SocialLink::orderBy('sort_order')->get();
+        $search = trim((string) $request->query('search', ''));
 
-        return view('admin.social-links.index', compact('socialLinks'));
+        $query = SocialLink::query();
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('platform', 'like', "%{$search}%");
+            });
+        }
+
+        $socialLinks = $query->orderBy('sort_order')->get();
+
+        return view('admin.social-links.index', [
+            'socialLinks' => $socialLinks,
+            'search' => $search,
+            // Global (unfiltered) boundaries — see SkillController@index for
+            // why this replaced the old $loop->first/last disabled logic.
+            'minSortOrder' => (int) (SocialLink::min('sort_order') ?? 0),
+            'maxSortOrder' => (int) (SocialLink::max('sort_order') ?? 0),
+        ]);
     }
 
     public function create(): View

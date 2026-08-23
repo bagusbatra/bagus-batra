@@ -12,7 +12,7 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-50/80 text-slate-800 flex items-center justify-center font-sans relative overflow-hidden px-4 py-12">
+<body x-data="revealOnScroll" class="min-h-screen bg-slate-50/80 text-slate-800 flex items-center justify-center font-sans relative overflow-hidden px-4 py-12">
     {{-- Ambient background, consistent with the public site --}}
     <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div class="ambient-blob ambient-blob-1 absolute -top-40 -right-40 w-[650px] h-[650px] bg-gradient-to-br from-indigo-200/40 via-purple-100/30 to-transparent rounded-full blur-3xl"></div>
@@ -22,7 +22,7 @@
 
     <div class="relative z-10 w-full max-w-md space-y-6">
         {{-- Brand mark --}}
-        <div class="text-center space-y-2">
+        <div data-reveal class="text-center space-y-2">
             <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/20 mb-1">
                 <x-icon name="shield-check" class="w-6 h-6" />
             </div>
@@ -30,7 +30,7 @@
             <p class="text-xs text-slate-500">Masuk untuk mengelola konten portfolio</p>
         </div>
 
-        <div class="bg-white/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/80 shadow-2xl shadow-slate-200/50 space-y-6">
+        <div data-reveal class="bg-white/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/80 shadow-2xl shadow-slate-200/50 space-y-6">
             @if ($errors->any())
                 <div class="p-3.5 rounded-xl bg-rose-50/90 border border-rose-200 text-rose-700 text-xs font-semibold flex items-start gap-2">
                     <x-icon name="x" class="w-4 h-4 shrink-0 mt-0.5" />
@@ -90,7 +90,7 @@
             </form>
         </div>
 
-        <p class="text-center text-xs text-slate-400">
+        <p data-reveal class="text-center text-xs text-slate-400">
             <a href="{{ url('/') }}" class="hover:text-indigo-600 transition-colors">&larr; Kembali ke halaman publik</a>
         </p>
     </div>
