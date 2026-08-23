@@ -15,15 +15,15 @@ class SectionSettingSeeder extends Seeder
     public function run(): void
     {
         $sections = [
-            ['section_key' => 'hero', 'label' => 'Hero', 'sort_order' => 0],
-            ['section_key' => 'about', 'label' => 'About', 'sort_order' => 1],
-            ['section_key' => 'skills', 'label' => 'Skills', 'sort_order' => 2],
-            ['section_key' => 'projects', 'label' => 'Projects', 'sort_order' => 3],
+            ['section_key' => 'hero', 'label' => 'Hero / Beranda', 'sort_order' => 0],
+            ['section_key' => 'about', 'label' => 'Tentang Saya', 'sort_order' => 1],
+            ['section_key' => 'skills', 'label' => 'Keahlian & Tech Stack', 'sort_order' => 2],
+            ['section_key' => 'projects', 'label' => 'Proyek / Portfolio', 'sort_order' => 3],
             ['section_key' => 'playground', 'label' => 'Interactive Playground', 'sort_order' => 4],
-            ['section_key' => 'experience', 'label' => 'Experience', 'sort_order' => 5],
-            ['section_key' => 'blog', 'label' => 'Blog', 'sort_order' => 6],
-            ['section_key' => 'testimonials', 'label' => 'Testimonials', 'sort_order' => 7],
-            ['section_key' => 'contact', 'label' => 'Contact', 'sort_order' => 8],
+            ['section_key' => 'experience', 'label' => 'Pengalaman Kerja', 'sort_order' => 5],
+            ['section_key' => 'blog', 'label' => 'Artikel Blog', 'sort_order' => 6],
+            ['section_key' => 'testimonials', 'label' => 'Testimoni', 'sort_order' => 7],
+            ['section_key' => 'contact', 'label' => 'Kontak', 'sort_order' => 8],
         ];
 
         foreach ($sections as $section) {

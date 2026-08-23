@@ -27,6 +27,18 @@ class DashboardController extends Controller
 
         $sections = SectionSetting::orderBy('sort_order')->get();
 
-        return view('admin.dashboard', compact('stats', 'sections'));
+        $quickLinks = [
+            ['route' => 'admin.profile', 'label' => 'Profil & Hero', 'icon' => 'user'],
+            ['route' => 'admin.social-links', 'label' => 'Social Links', 'icon' => 'globe'],
+            ['route' => 'admin.about-skills', 'label' => 'About & Skills', 'icon' => 'cpu'],
+            ['route' => 'admin.projects', 'label' => 'Projects', 'icon' => 'folder-git-2'],
+            ['route' => 'admin.experience', 'label' => 'Experience', 'icon' => 'briefcase'],
+            ['route' => 'admin.blog', 'label' => 'Blog', 'icon' => 'book-open'],
+            ['route' => 'admin.testimonials', 'label' => 'Testimonials', 'icon' => 'quote'],
+            ['route' => 'admin.messages', 'label' => 'Pesan Masuk', 'icon' => 'mail'],
+            ['route' => 'admin.section-settings', 'label' => 'Pengaturan Section', 'icon' => 'sliders'],
+        ];
+
+        return view('admin.dashboard', compact('stats', 'sections', 'quickLinks'));
     }
 }

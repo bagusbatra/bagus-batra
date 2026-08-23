@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PlaceholderController;
+use App\Http\Controllers\Admin\SectionSettingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,6 +30,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+        Route::get('section-settings', [SectionSettingController::class, 'index'])->name('section-settings');
+        Route::patch('section-settings/{sectionSetting}/toggle', [SectionSettingController::class, 'toggle'])->name('section-settings.toggle');
+
         // Menus without a real feature yet — placeholder pages so the
         // sidebar never 404s while making the owning iteration explicit.
         // [route name suffix => [menu title, "Segera Hadir" note]]
@@ -37,12 +41,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'social-links' => ['Social Links', 'Segera hadir — bagian dari Iterasi 2'],
             'about-skills' => ['About & Skills', 'Segera hadir — bagian dari Iterasi 3'],
             'projects' => ['Projects', 'Segera hadir — bagian dari Iterasi 4'],
-            'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya bagian dari Iterasi 1 (Pengaturan Section)'],
+            'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
             'experience' => ['Experience', 'Segera hadir — bagian dari Iterasi 5'],
             'blog' => ['Blog', 'Segera hadir — bagian dari Iterasi 6'],
             'testimonials' => ['Testimonials', 'Segera hadir — bagian dari Iterasi 7'],
             'messages' => ['Pesan Masuk', 'Segera hadir — bagian dari Iterasi 8'],
-            'section-settings' => ['Pengaturan Section', 'Segera hadir — bagian dari Iterasi 1'],
         ];
 
         foreach ($placeholders as $slug => [$title, $iterationNote]) {

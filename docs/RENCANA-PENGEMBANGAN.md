@@ -1,6 +1,6 @@
 # Rencana Pengembangan — Admin Panel & Perapian Data
 
-Status: **Draft awal — menunggu review sebelum Iterasi 0 dieksekusi**
+Status: **Iterasi 0 selesai & terverifikasi. Atas instruksi user, Iterasi 1–8 dikerjakan berurutan secara otomatis tanpa jeda review per-iterasi (jeda review antar-iterasi yang dijelaskan di bagian 2 ditangguhkan untuk rentang ini) — progres tetap tercatat di `LOG-ITERASI.md` & `ERD.md` setiap iterasi selesai.**
 Dibuat: 2026-08-23
 
 ## 1. Tujuan

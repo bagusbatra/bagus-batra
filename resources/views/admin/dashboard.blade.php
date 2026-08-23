@@ -44,12 +44,15 @@
 
     {{-- Section status --}}
     <div data-reveal class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs overflow-hidden">
-        <div class="px-5 sm:px-6 py-4 border-b border-slate-200/70 flex items-center justify-between">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-200/70 flex items-center justify-between gap-3">
             <div>
                 <h3 class="text-sm font-extrabold text-slate-900">Status Section Halaman Publik</h3>
-                <p class="text-xs text-slate-500 mt-0.5">Read-only di Iterasi 0 — saklar akan berfungsi mulai Iterasi 1 (Pengaturan Section).</p>
+                <p class="text-xs text-slate-500 mt-0.5">{{ $sections->where('is_active', true)->count() }} dari {{ $sections->count() }} section aktif di halaman <code class="text-[10px] font-mono bg-slate-100 px-1 py-0.5 rounded">/</code> saat ini.</p>
             </div>
-            <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">Read-only</span>
+            <a href="{{ route('admin.section-settings') }}" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold transition-colors">
+                <x-icon name="sliders" class="w-3.5 h-3.5" />
+                Kelola
+            </a>
         </div>
         <ul class="divide-y divide-slate-200/70">
             @foreach ($sections as $section)
@@ -66,5 +69,20 @@
                 </li>
             @endforeach
         </ul>
+    </div>
+
+    {{-- Quick links to every admin menu --}}
+    <div data-reveal class="space-y-3">
+        <h3 class="text-sm font-extrabold text-slate-900">Menu Cepat</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            @foreach ($quickLinks as $link)
+                <a href="{{ route($link['route']) }}" class="group flex items-center gap-3 p-4 bg-white/60 backdrop-blur-xl rounded-2xl border border-white/80 shadow-2xs hover:shadow-lg hover:-translate-y-0.5 hover:border-indigo-200 transition-all duration-200">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-50/80 text-indigo-600 flex items-center justify-center border border-indigo-100/60 shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                        <x-icon :name="$link['icon']" class="w-4.5 h-4.5" />
+                    </div>
+                    <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-700 transition-colors leading-tight">{{ $link['label'] }}</span>
+                </a>
+            @endforeach
+        </div>
     </div>
 @endsection

@@ -79,7 +79,15 @@
             @endforeach
         </div>
 
-        {{-- Tech Stack & Skills Matrix --}}
+        {{--
+            Tech Stack & Skills Matrix — this lives inside the same
+            <section id="about"> as the About copy above (one physical
+            HTML section, two section_settings rows: "about" and
+            "skills"). Toggling "about" off hides this whole block too
+            (it's nested); toggling "skills" off while "about" stays on
+            hides just this sub-block, keeping the About copy visible.
+        --}}
+        @if ($sectionActive['skills'] ?? true)
         <div id="skills" x-data="aboutSection()" class="pt-4 sm:pt-8 space-y-6 sm:space-y-8">
             <div data-reveal class="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div class="max-w-2xl">
@@ -141,5 +149,6 @@
                 @endforeach
             </div>
         </div>
+        @endif
     </div>
 </section>
