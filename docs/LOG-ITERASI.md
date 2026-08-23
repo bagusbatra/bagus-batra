@@ -58,7 +58,7 @@ Menu "Testimonials" (placeholder sejak Iterasi 0) sekarang CRUD penuh — model 
   - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
 
 ### Commit
-- (diisi setelah commit dibuat)
+- `5b66a09` — Iterasi 7: CRUD Testimonials dengan star rating picker interaktif
 
 ### Catatan untuk review
 - Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` diupdate hanya di bagian "Riwayat perubahan skema".
