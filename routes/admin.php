@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ExperienceController;
 use App\Http\Controllers\Admin\PlaceholderController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\ProjectController;
@@ -64,12 +65,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
         Route::patch('projects/{project}/move', [ProjectController::class, 'move'])->name('projects.move');
 
+        Route::get('experience', [ExperienceController::class, 'index'])->name('experience');
+        Route::get('experience/create', [ExperienceController::class, 'create'])->name('experience.create');
+        Route::post('experience', [ExperienceController::class, 'store'])->name('experience.store');
+        Route::get('experience/{experience}/edit', [ExperienceController::class, 'edit'])->name('experience.edit');
+        Route::put('experience/{experience}', [ExperienceController::class, 'update'])->name('experience.update');
+        Route::delete('experience/{experience}', [ExperienceController::class, 'destroy'])->name('experience.destroy');
+        Route::patch('experience/{experience}/move', [ExperienceController::class, 'move'])->name('experience.move');
+
         // Menus without a real feature yet — placeholder pages so the
         // sidebar never 404s while making the owning iteration explicit.
         // [route name suffix => [menu title, "Segera Hadir" note]]
         $placeholders = [
             'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
-            'experience' => ['Experience', 'Segera hadir — bagian dari Iterasi 5'],
             'blog' => ['Blog', 'Segera hadir — bagian dari Iterasi 6'],
             'testimonials' => ['Testimonials', 'Segera hadir — bagian dari Iterasi 7'],
             'messages' => ['Pesan Masuk', 'Segera hadir — bagian dari Iterasi 8'],

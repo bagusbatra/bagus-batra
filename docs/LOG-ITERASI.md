@@ -29,6 +29,43 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 5 — Experience (selesai: 2026-08-23)
+Status: Selesai
+
+### Ringkasan
+Menu "Experience" (placeholder sejak Iterasi 0) sekarang CRUD penuh untuk tabel `experiences` — timeline karier di halaman publik. Sama seperti Iterasi 4, `experience_key` dibuat otomatis dari `company + role` saat create dan immutable setelahnya (alasan sama: dipakai sebagai DOM id `experience-item-{key}` di halaman publik). Repeater Alpine dipakai untuk `achievements` dan `skills` (keduanya array string flat, pola identik dgn `tags`/`highlights` di Iterasi 4). List admin punya search (role atau perusahaan) + filter tipe kerja (dropdown terisi otomatis dari nilai `type` yang sudah ada di DB via `distinct()`, bukan daftar hardcode) + pagination.
+
+### File/area utama yang berubah
+- `app/Http/Controllers/Admin/ExperienceController.php` (baru) — CRUD penuh + `move()` + `index()` dgn search (role/company, `orWhere`) dan filter `type` + pagination. `uniqueKey()` sama pola dgn `ProjectController@uniqueKey`.
+- `routes/admin.php` — placeholder `experience` dihapus dari `$placeholders`; ditambah 7 route `admin.experience*`.
+- `resources/views/admin/experience/index.blade.php` (baru) — pola identik list Projects/Social Links/Skills (search+filter, reorder naik/turun, badge Featured, modal konfirmasi hapus, pagination Tailwind bawaan).
+- `resources/views/admin/experience/form.blade.php` (baru) — field `type` pakai `<input list="...">` (datalist HTML native) berisi 5 saran umum (Full-Time/Part-Time/Contract/Freelance/Internship) tapi tetap free-text (bukan `<select>` dibatasi) karena field ini murni teks tampilan tanpa logika filter publik yang bergantung padanya — beda dgn `category` Project/Skill yang memang dipakai untuk filter pill di halaman publik sehingga perlu dibatasi ke enum. Achievements & Skills masing-masing repeater Alpine sederhana (array string, `:name="achievements[${index}]"` / `skills[${index}]"`).
+
+### Migrasi & seeder dijalankan
+- Tidak ada migrasi baru (skema `experiences` sudah lengkap sebelum Fase 1).
+- Tidak ada seeder baru dijalankan.
+
+### Verifikasi
+- `php artisan route:list --path=admin/experience` — 7 route bersih, tidak ada placeholder tersisa.
+- `npm run build` — sukses.
+- End-to-end via `php artisan serve` + `curl` (cookie jar, login admin):
+  - `GET /admin/experience` → 200, 3 experience seed tampil (`Experience::count()` = 3, cocok).
+  - `POST /admin/experience` menambah "Experience Test Unik Engineer" (company "Test Company Unik", 1 achievement, 1 skill) → 302; `GET /` sesudahnya mengandung teks itu (2 match) — bukti tambah langsung tampil di timeline.
+  - `PUT /admin/experience/{id}` mengubah role jadi "...EDITED" → 302; `GET /` mengandung role baru.
+  - `GET /admin/experience?search=Unik` → hanya experience test yang cocok tampil.
+  - `DELETE /admin/experience/{id}` untuk experience test → 302; `Experience::count()` kembali 3; `GET /` → 0 match — bukti hapus langsung hilang.
+  - `storage/logs/laravel.log` dicek setelah seluruh rangkaian — kosong, tidak ada exception baru.
+  - Server dimatikan setelah verifikasi (dikonfirmasi request gagal connect).
+
+### Commit
+- (diisi setelah commit dibuat)
+
+### Catatan untuk review
+- Field `featured` di `experiences` ada di skema & form admin, tapi **tidak dipakai untuk badge apapun** di `experience.blade.php` publik saat ini (beda dgn Project yang punya badge "Featured" jelas di kartu). Ini bukan bug yang diperkenalkan iterasi ini — sudah begitu sejak sebelum Fase 1 (kolom sudah ada di skema tapi partial publik tidak pernah merendernya). Dicatat sebagai temuan; tidak diperbaiki karena mengubah tampilan publik di luar scope "CRUD admin" iterasi ini — bisa jadi rekomendasi kecil untuk Iterasi 9 (Polish & QA) bila ingin dikonsistenkan dengan Project.
+- Tidak ada perubahan skema database di iterasi ini — `docs/ERD.md` diupdate hanya di bagian "Riwayat perubahan skema".
+
+---
+
 ## Iterasi 4 — Projects (selesai: 2026-08-23)
 Status: Selesai
 
