@@ -205,8 +205,92 @@
             </form>
         </div>
 
-        {{-- Tab: Urutan & Isi Section — on/off (Iterasi 1) dipindah ke sini, reorder/heading placeholder Iterasi 20-21 --}}
+        {{-- Tab: Urutan & Isi Section — on/off (Iterasi 1) + reorder drag-drop & jumlah item (Iterasi 20) --}}
         <div x-show="tab === 'sections'" x-cloak class="space-y-4">
+            {{-- Reorder drag-drop & jumlah item — FUNGSIONAL (Iterasi 20) --}}
+            @php
+                $countLabels = [
+                    'projects' => 'Default: 3 (featured, fallback 3 pertama)',
+                    'blog' => 'Default: semua artikel',
+                    'testimonials' => 'Default: semua testimoni',
+                ];
+                $reorderItems = $orderedTopLevelSections->map(fn ($s) => [
+                    'key' => $s->section_key,
+                    'label' => $s->label,
+                    'hasCount' => in_array($s->section_key, ['projects', 'blog', 'testimonials'], true),
+                    // Iterasi 20: coalesce null -> '' SEBELUM di-@js() ke JSON —
+                    // assign JS `null` langsung ke properti .value elemen
+                    // <input> lewat x-model bisa berakhir sbg literal string
+                    // "null" di beberapa browser (bukan field kosong yg
+                    // diharapkan), jadi dihindari di sini dari sisi server.
+                    'count' => $s->effective('display_count', true) ?? '',
+                ])->values();
+            @endphp
+
+            <form
+                method="POST"
+                action="{{ route('admin.appearance.sections.update') }}"
+                x-data="sectionReorder(@js($reorderItems))"
+                data-reveal
+                class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-5 sm:p-6 space-y-4"
+            >
+                @csrf
+                @method('PUT')
+
+                <div>
+                    <h3 class="text-sm font-extrabold text-slate-900">Urutan Tampil &amp; Jumlah Item</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Geser (drag &amp; drop) kartu untuk mengubah urutan 7 section utama di halaman index. Isi "Jumlah tampil" untuk Proyek/Blog/Testimoni (kosongkan = pakai default). Section "Keahlian &amp; Tech Stack" tidak ada di sini karena menyatu dengan section "Tentang Saya" (togglenya tetap ada di daftar bawah).
+                    </p>
+                </div>
+
+                @error('order') <p class="text-[11px] text-rose-600 font-semibold">{{ $message }}</p> @enderror
+
+                <ul class="space-y-2">
+                    <template x-for="(item, index) in items" :key="item.key">
+                        <li
+                            draggable="true"
+                            @dragstart="dragStart(index)"
+                            @dragover.prevent="dragOverItem(index)"
+                            @dragend="dragEnd()"
+                            class="flex flex-wrap items-center gap-3 p-3 rounded-2xl border border-slate-200/70 bg-white/70 cursor-grab active:cursor-grabbing transition-opacity"
+                            :class="dragIndex === index ? 'opacity-40' : 'opacity-100'"
+                        >
+                            <x-icon name="grip-vertical" class="w-4 h-4 text-slate-400 shrink-0" />
+                            <span class="text-[11px] font-mono font-bold text-slate-400 w-5 text-right shrink-0" x-text="index"></span>
+                            <span class="text-sm font-bold text-slate-800 flex-1 min-w-[8rem]" x-text="item.label"></span>
+
+                            <template x-if="item.hasCount">
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <label class="text-[11px] text-slate-400 whitespace-nowrap">Jumlah tampil:</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="50"
+                                        x-model.number="item.count"
+                                        :name="'display_count[' + item.key + ']'"
+                                        class="w-16 px-2 py-1.5 text-xs rounded-lg border border-slate-200 text-center focus:outline-indigo-500"
+                                    />
+                                </div>
+                            </template>
+
+                            <input type="hidden" :name="'order[]'" :value="item.key" />
+                        </li>
+                    </template>
+                </ul>
+
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-400">
+                    @foreach ($countLabels as $key => $label)
+                        <span><strong class="text-slate-500">{{ $key }}</strong>: {{ $label }}</span>
+                    @endforeach
+                </div>
+
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-colors">
+                    <x-icon name="check" class="w-3.5 h-3.5" />
+                    Simpan sebagai Draft
+                </button>
+            </form>
+
             @include('admin.section-settings._list')
         </div>
 

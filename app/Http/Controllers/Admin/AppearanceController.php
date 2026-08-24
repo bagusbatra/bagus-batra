@@ -52,6 +52,21 @@ class AppearanceController extends Controller
         $hasPendingDraft = DisplaySetting::hasPendingDraft()
             || SectionSetting::whereNotNull('draft_overrides')->exists();
 
+        // Iterasi 20 (Fase 4) — 7 section top-level (lihat
+        // PortfolioController::SECTION_PARTIALS) diurutkan menurut
+        // sort_order EFEKTIF, preview=true SELALU dipakai di sini (sama pola
+        // dgn $animationsEnabled/$accentPreset di atas) supaya form reorder
+        // mencerminkan draft yang baru saja disimpan admin, bukan nilai
+        // live. Dipakai UI drag-drop baru di tab "Urutan & Isi Section" —
+        // TERPISAH dari $sections (list on/off Iterasi 1, 8 baris termasuk
+        // "skills", tetap live-only/tidak berubah, lihat
+        // admin/section-settings/_list.blade.php).
+        $orderedTopLevelSections = SectionSetting::whereIn('section_key', array_keys(PortfolioController::SECTION_PARTIALS))
+            ->get()
+            ->keyBy('section_key')
+            ->sortBy(fn (SectionSetting $s) => (int) $s->effective('sort_order', true))
+            ->values();
+
         $tab = $request->query('tab', 'ringkasan');
 
         return view('admin.appearance.index', compact(
@@ -62,6 +77,7 @@ class AppearanceController extends Controller
             'logoImage',
             'accentPresets',
             'hasPendingDraft',
+            'orderedTopLevelSections',
             'tab'
         ));
     }
@@ -119,6 +135,71 @@ class AppearanceController extends Controller
         return redirect()
             ->route('admin.appearance', ['tab' => 'branding'])
             ->with('success', 'Perubahan disimpan sebagai draft. Buka Preview untuk melihatnya, lalu Publish supaya berlaku di situs live.');
+    }
+
+    /**
+     * Iterasi 20 (Fase 4) — reorder (drag-drop) 7 section top-level +
+     * jumlah item (display_count) untuk 3 section list-type (projects/blog/
+     * testimonials), keduanya digabung jadi SATU form/aksi di UI (lihat
+     * admin/appearance/index.blade.php, blok "Urutan Tampil & Jumlah Item").
+     *
+     * Menulis ke section_settings.draft_overrides (BUKAN langsung ke kolom
+     * asli) — pengguna KETIGA dari alur draft generik Iterasi 18, sama
+     * seperti updateAnimations()/updateBranding() di atas. publish()/
+     * discardDraft() TIDAK perlu diubah sama sekali untuk mendukung ini.
+     *
+     * `order` = array 7 section_key sesuai urutan baru hasil drag-drop
+     * (index array = sort_order baru). `display_count` = array asosiatif
+     * opsional {projects, blog, testimonials} — dikirim SETIAP submit form
+     * ini (bukan cuma saat benar-benar diubah admin), nilai kosong/null
+     * berarti "pakai default" (lihat PortfolioController@index).
+     */
+    public function updateSections(Request $request): RedirectResponse
+    {
+        $sectionKeys = array_keys(PortfolioController::SECTION_PARTIALS);
+
+        $validated = $request->validate([
+            'order' => ['required', 'array', 'size:'.count($sectionKeys)],
+            'order.*' => ['required', 'string', Rule::in($sectionKeys)],
+            'display_count' => ['nullable', 'array'],
+            'display_count.projects' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'display_count.blog' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'display_count.testimonials' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        // `order` harus persis 7 section_key top-level, masing2 sekali —
+        // divalidasi manual di sini karena `distinct` + `in:` saja tidak
+        // menjamin SEMUA key tercakup (mis. admin bisa saja kirim duplikat
+        // yg lolos `in:` tapi hilang salah satu section).
+        if (array_values(array_unique($validated['order'])) !== $validated['order']
+            || count(array_diff($sectionKeys, $validated['order'])) > 0) {
+            return redirect()
+                ->route('admin.appearance', ['tab' => 'sections'])
+                ->withErrors(['order' => 'Urutan section tidak valid (ada yang hilang/duplikat) — coba lagi.']);
+        }
+
+        $sections = SectionSetting::whereIn('section_key', $sectionKeys)->get()->keyBy('section_key');
+
+        foreach ($validated['order'] as $index => $key) {
+            $section = $sections->get($key);
+            if (! $section) {
+                continue;
+            }
+
+            $overrides = is_array($section->draft_overrides) ? $section->draft_overrides : [];
+            $overrides['sort_order'] = $index;
+
+            if (in_array($key, ['projects', 'blog', 'testimonials'], true)) {
+                $overrides['display_count'] = $validated['display_count'][$key] ?? null;
+            }
+
+            $section->draft_overrides = $overrides;
+            $section->save();
+        }
+
+        return redirect()
+            ->route('admin.appearance', ['tab' => 'sections'])
+            ->with('success', 'Urutan & jumlah item disimpan sebagai draft. Buka Preview untuk melihatnya, lalu Publish supaya berlaku di situs live.');
     }
 
     /**

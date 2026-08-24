@@ -2,34 +2,28 @@
 
 @section('content')
     {{--
-        Each section below is gated by its section_settings.is_active flag
-        (see PortfolioController@index — $sectionActive). Navbar & footer
-        are structural and always render, per docs/RENCANA-PENGEMBANGAN.md.
+        Iterasi 20 (Fase 4): refactor dari 7 blok @if/@include statis
+        (urutan hardcode di file ini) jadi loop dinamis atas $orderedSections
+        — collection nama partial view, sudah difilter (hanya section aktif)
+        & diurutkan (sort_order efektif, draft-aware) oleh
+        PortfolioController@index (lihat App\Http\Controllers\PortfolioController
+        ::SECTION_PARTIALS & ::index()). Urutan DEFAULT (sort_order asli 0-6)
+        menghasilkan urutan identik dengan versi statis sebelumnya: hero,
+        about, projects, experience, blog, testimonials, contact.
 
-        "about" and "skills" are two separate toggleable rows but live in
-        ONE partial/<section> (about.blade.php contains both the About
-        copy and the Skills matrix as a nested block) — see the comment
-        inside that partial for how the "skills" flag is honoured there.
+        Navbar & footer TIDAK ikut loop ini — keduanya structural, di-include
+        langsung dari layouts/app.blade.php, tidak pernah bisa dimatikan/
+        direorder (lihat docs/RENCANA-PENGEMBANGAN.md).
+
+        "about" dan "skills" tetap dua baris section_settings terpisah yang
+        togglenya fungsional, tapi hidup dalam SATU partial/<section>
+        (about.blade.php memuat copy About + matriks Skills sbg blok
+        nested) — "skills" SENGAJA TIDAK ada di SECTION_PARTIALS (tidak
+        punya posisi DOM independen utk direorder), lihat komentar di
+        about.blade.php utk bagaimana flag "skills" ($sectionActive)
+        dihormati di sana.
     --}}
-    @if ($sectionActive['hero'] ?? true)
-        @include('portfolio.partials.hero')
-    @endif
-    @if ($sectionActive['about'] ?? true)
-        @include('portfolio.partials.about')
-    @endif
-    @if ($sectionActive['projects'] ?? true)
-        @include('portfolio.partials.projects')
-    @endif
-    @if ($sectionActive['experience'] ?? true)
-        @include('portfolio.partials.experience')
-    @endif
-    @if ($sectionActive['blog'] ?? true)
-        @include('portfolio.partials.blog')
-    @endif
-    @if ($sectionActive['testimonials'] ?? true)
-        @include('portfolio.partials.testimonials')
-    @endif
-    @if ($sectionActive['contact'] ?? true)
-        @include('portfolio.partials.contact')
-    @endif
+    @foreach ($orderedSections as $partial)
+        @include($partial)
+    @endforeach
 @endsection

@@ -61,6 +61,45 @@ Alpine.data('sectionToggle', (id, initialActive) => ({
     },
 }));
 
+/**
+ * Iterasi 20 (Fase 4) — reorder drag-drop untuk tab "Urutan & Isi Section"
+ * (7 section top-level). HTML5 Drag and Drop API native (draggable="true" +
+ * dragstart/dragover/drop di markup Blade) dikombinasikan dgn state Alpine
+ * di sini — TIDAK memakai library JS baru (bukan SortableJS dkk), sesuai
+ * docs/RENCANA-KUSTOMISASI-TAMPILAN.md bagian 3.
+ *
+ * Beda dgn sectionToggle() di atas: komponen ini TIDAK melakukan fetch/AJAX
+ * sendiri. Drag-drop murni mengubah urutan array `items` di client (live,
+ * tanpa request), lalu admin klik SATU tombol submit "Simpan sebagai Draft"
+ * yang men-submit form biasa (PUT ke admin.appearance.sections.update) —
+ * hidden input `order[]` dirender via x-for mengikuti urutan `items` saat
+ * ini, jadi urutan baru otomatis terkirim tanpa JS tambahan utk serialisasi.
+ * Keputusan ini didokumentasikan di docs/LOG-ITERASI.md Iterasi 20: form
+ * POST biasa dipilih ketimbang fetch/AJAX supaya konsisten dgn SEMUA tab
+ * appearance lain (branding/animasi — full-page redirect + refresh banner
+ * status Draft/Live), tanpa perlu duplikasi logic refresh banner via JS.
+ */
+Alpine.data('sectionReorder', (initialItems) => ({
+    items: initialItems,
+    dragIndex: null,
+
+    dragStart(index) {
+        this.dragIndex = index;
+    },
+
+    dragOverItem(index) {
+        if (this.dragIndex === null || this.dragIndex === index) return;
+
+        const moved = this.items.splice(this.dragIndex, 1)[0];
+        this.items.splice(index, 0, moved);
+        this.dragIndex = index;
+    },
+
+    dragEnd() {
+        this.dragIndex = null;
+    },
+}));
+
 window.Alpine = Alpine;
 
 Alpine.start();

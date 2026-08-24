@@ -10,6 +10,7 @@ use App\Models\SiteProfile;
 use App\Models\Skill;
 use App\Models\SocialLink;
 use App\Models\Testimonial;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class PortfolioController extends Controller
@@ -24,32 +25,108 @@ class PortfolioController extends Controller
 
     public const SECTION_SETTINGS_CACHE_KEY = 'section_settings_map';
 
-    public function index()
+    /**
+     * Iterasi 20 (Fase 4) — pemetaan section_key => partial view untuk 7
+     * section top-level yang BENAR-BENAR bisa direorder & di-@include
+     * terpisah (lihat docs/RENCANA-KUSTOMISASI-TAMPILAN.md bagian 3 baris
+     * "Reorder section — dampak struktural"). "skills" SENGAJA tidak ada di
+     * sini — ia nested di dalam partial "about" (lihat komentar di
+     * portfolio/partials/about.blade.php), jadi tidak punya posisi DOM
+     * independen untuk direorder; hanya togglenya yang fungsional (lewat
+     * $sectionActive di bawah, tidak berubah dari Iterasi 1-19).
+     */
+    public const SECTION_PARTIALS = [
+        'hero' => 'portfolio.partials.hero',
+        'about' => 'portfolio.partials.about',
+        'projects' => 'portfolio.partials.projects',
+        'experience' => 'portfolio.partials.experience',
+        'blog' => 'portfolio.partials.blog',
+        'testimonials' => 'portfolio.partials.testimonials',
+        'contact' => 'portfolio.partials.contact',
+    ];
+
+    public function index(Request $request)
     {
         $skills = Skill::orderBy('sort_order')->get();
+
+        // Iterasi 20 (Fase 4): urutan & aktif/tidaknya 7 section top-level
+        // sekarang ditentukan oleh section_settings.sort_order/is_active
+        // EFEKTIF (draft-aware lewat SectionSetting::effective(), lihat
+        // App\Models\SectionSetting), BUKAN lagi urutan tetap yang di-hardcode
+        // di portfolio/index.blade.php. Query di sini SENGAJA TIDAK memakai
+        // cache Iterasi 15 (SECTION_SETTINGS_CACHE_KEY di bawah) — cache itu
+        // cuma pluck is_active LIVE (dipakai $sectionActive utk toggle
+        // "skills" yang memang selalu live, lihat di bawah), sedangkan
+        // urutan/is_active efektif di sini HARUS preview-aware per-request
+        // (beda utk admin yang login+preview vs visitor biasa dalam request
+        // yang sama-sama nge-hit endpoint ini). 7-8 baris section_settings
+        // sangat ringan untuk di-query langsung tanpa cache setiap request.
+        $previewActive = (bool) $request->attributes->get('appearance_preview', false);
+
+        $topLevelSections = SectionSetting::whereIn('section_key', array_keys(self::SECTION_PARTIALS))
+            ->get()
+            ->keyBy('section_key');
+
+        $orderedSections = collect(self::SECTION_PARTIALS)
+            ->keys()
+            ->map(fn (string $key) => $topLevelSections->get($key))
+            ->filter()
+            ->filter(fn (SectionSetting $section) => (bool) $section->effective('is_active', $previewActive))
+            ->sortBy(fn (SectionSetting $section) => (int) $section->effective('sort_order', $previewActive))
+            ->map(fn (SectionSetting $section) => self::SECTION_PARTIALS[$section->section_key])
+            ->values();
+
+        // Iterasi 20 (Fase 4): display_count efektif (draft-aware) untuk 3
+        // section list-type. NULL = pakai fallback/default lama (lihat
+        // docs/RENCANA-KUSTOMISASI-TAMPILAN.md bagian 5 Iterasi 20).
+        $projectCount = (int) ($topLevelSections->get('projects')?->effective('display_count', $previewActive) ?? 3);
+        $blogCount = $topLevelSections->get('blog')?->effective('display_count', $previewActive);
+        $testimonialsCount = $topLevelSections->get('testimonials')?->effective('display_count', $previewActive);
 
         // Iterasi 10 (Fase 2): section Projects di index sekarang jadi
         // highlight, bukan katalog lengkap (itu pindah ke halaman /projects,
         // lihat ProjectPageController). Hanya project featured=true yang
         // tampil; kalau belum ada satupun yang ditandai featured, fallback
-        // ke 3 project pertama berdasar sort_order supaya section ini tidak
-        // pernah kosong (lihat docs/RENCANA-PENGEMBANGAN.md #10).
+        // ke $projectCount project pertama berdasar sort_order supaya
+        // section ini tidak pernah kosong (lihat
+        // docs/RENCANA-PENGEMBANGAN.md #10).
         //
         // Iterasi 15 (Fase 3): sebelumnya query ini fetch SEMUA baris lalu
         // filter `featured` di PHP (Collection::where) — boros karena selalu
         // mengambil seluruh tabel meski cuma butuh subset featured. Sekarang
-        // filter dilakukan di level SQL; query fallback (take 3) HANYA
-        // dijalankan kalau hasil pertama benar-benar kosong, jadi skenario
-        // normal (ada project featured) cukup 1 query, bukan 1 query
-        // fetch-all + filter PHP.
-        $projects = Project::where('featured', true)->orderBy('sort_order')->get();
+        // filter dilakukan di level SQL; query fallback HANYA dijalankan
+        // kalau hasil pertama benar-benar kosong, jadi skenario normal (ada
+        // project featured) cukup 1 query, bukan 1 query fetch-all + filter
+        // PHP.
+        //
+        // Iterasi 20 (Fase 4): kedua query di-`take($projectCount)`, bukan
+        // lagi hardcode 3 — default TETAP 3 kalau admin belum pernah
+        // mengatur display_count (lihat $projectCount di atas). Karena
+        // baseline seed hanya berisi 3 project featured, `take(3)` di query
+        // pertama tidak mengubah hasil untuk baseline (regresi aman).
+        $projects = Project::where('featured', true)->orderBy('sort_order')->take($projectCount)->get();
         if ($projects->isEmpty()) {
-            $projects = Project::orderBy('sort_order')->take(3)->get();
+            $projects = Project::orderBy('sort_order')->take($projectCount)->get();
         }
 
-        $blogPosts = BlogPost::orderBy('sort_order')->get();
+        // Iterasi 20 (Fase 4): blog & testimonials SEBELUMNYA tidak pernah
+        // di-take() sama sekali di index (selalu tampil SEMUA baris) — itu
+        // jadi "default" yang harus dipertahankan kalau display_count belum
+        // diatur admin (NULL). take() hanya diterapkan kalau display_count
+        // efektif terisi angka.
+        $blogQuery = BlogPost::orderBy('sort_order');
+        if ($blogCount !== null) {
+            $blogQuery->take((int) $blogCount);
+        }
+        $blogPosts = $blogQuery->get();
+
         $experiences = Experience::orderBy('sort_order')->get();
-        $testimonials = Testimonial::orderBy('sort_order')->get();
+
+        $testimonialsQuery = Testimonial::orderBy('sort_order');
+        if ($testimonialsCount !== null) {
+            $testimonialsQuery->take((int) $testimonialsCount);
+        }
+        $testimonials = $testimonialsQuery->get();
 
         // Iterasi 2: dibaca dari database (site_profiles / social_links),
         // bukan lagi config('portfolio.*'). SiteProfile's fillable columns
@@ -96,7 +173,8 @@ class PortfolioController extends Controller
             'testimonials',
             'personalInfo',
             'socialLinks',
-            'sectionActive'
+            'sectionActive',
+            'orderedSections'
         ));
     }
 }
