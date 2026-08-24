@@ -18,6 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // route (e.g. /admin/login) is sent to the dashboard.
         $middleware->redirectGuestsTo(fn () => route('admin.login'));
         $middleware->redirectUsersTo(fn () => route('admin.dashboard'));
+
+        // Iterasi 18 (Fase 4): mode preview/draft harus berlaku site-wide
+        // (publik & admin, karena admin butuh set/clear penanda preview via
+        // ?preview=1|0 di halaman publik manapun) — ditambahkan ke grup
+        // "web" (satu-satunya grup routing yang dipakai project ini, lihat
+        // withRouting() di atas), bukan cuma dipasang di routes/web.php.
+        $middleware->web(append: [
+            \App\Http\Middleware\HandleAppearancePreview::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

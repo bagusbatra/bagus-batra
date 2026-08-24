@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AppearanceController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -40,6 +41,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('section-settings', [SectionSettingController::class, 'index'])->name('section-settings');
         Route::patch('section-settings/{sectionSetting}/toggle', [SectionSettingController::class, 'toggle'])->name('section-settings.toggle');
+
+        // Iterasi 18 (Fase 4): menu "Tampilan Halaman Index" — menggantikan
+        // "Pengaturan Section" di sidebar (rute di atas tetap ada/tidak
+        // dihapus untuk kompatibilitas, tapi tidak lagi ditaut dari menu —
+        // lihat resources/views/admin/appearance/index.blade.php & catatan
+        // keputusan di docs/LOG-ITERASI.md).
+        Route::get('appearance', [AppearanceController::class, 'index'])->name('appearance');
+        Route::put('appearance/animations', [AppearanceController::class, 'updateAnimations'])->name('appearance.animations.update');
+        Route::post('appearance/publish', [AppearanceController::class, 'publish'])->name('appearance.publish');
+        Route::post('appearance/discard', [AppearanceController::class, 'discardDraft'])->name('appearance.discard');
 
         Route::get('profile', [ProfileController::class, 'edit'])->name('profile');
         Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');

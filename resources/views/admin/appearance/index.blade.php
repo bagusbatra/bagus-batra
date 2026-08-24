@@ -1,0 +1,181 @@
+@extends('admin.layouts.app')
+
+@section('title', 'Tampilan Halaman Index')
+
+@section('content')
+    <div
+        x-data="{ tab: '{{ in_array($tab, ['ringkasan', 'branding', 'animasi', 'sections', 'elemen', 'mode']) ? $tab : 'ringkasan' }}' }"
+        class="space-y-6"
+    >
+        <div data-reveal class="space-y-1">
+            <h2 class="text-xl font-extrabold text-slate-900">Tampilan Halaman Index</h2>
+            <p class="text-sm text-slate-500">
+                Kustomisasi tampilan halaman publik (<code class="text-[11px] font-mono bg-slate-100 px-1.5 py-0.5 rounded">/</code>) — preset warna, animasi, urutan section, sub-elemen halaman, dan mode situs.
+                Semua perubahan di sini tersimpan sebagai <strong>draft</strong> dulu, TIDAK langsung live — lihat panel status di bawah.
+            </p>
+        </div>
+
+        {{-- Panel status Draft/Live + aksi Publish/Buang Draft/Buka Preview --}}
+        <div data-reveal class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                <div class="w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0 {{ $hasPendingDraft ? 'bg-amber-50/80 text-amber-600 border-amber-100/60' : 'bg-emerald-50/80 text-emerald-600 border-emerald-100/60' }}">
+                    <x-icon name="{{ $hasPendingDraft ? 'activity' : 'check-circle-2' }}" class="w-5.5 h-5.5" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-sm font-extrabold text-slate-900">
+                        Status: {{ $hasPendingDraft ? 'Ada draft belum di-publish' : 'Live (tidak ada draft pending)' }}
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        @if ($hasPendingDraft)
+                            Perubahan draft belum terlihat oleh pengunjung biasa. Klik "Buka Preview" untuk melihatnya sebagai admin, lalu "Publish Perubahan" agar berlaku live.
+                        @else
+                            Semua pengaturan tampilan yang sedang live sama persis dengan yang ada di draft — tidak ada perubahan menunggu publish.
+                        @endif
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                <a
+                    href="{{ url('/') }}?preview=1"
+                    target="_blank"
+                    rel="noopener"
+                    class="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-colors"
+                >
+                    <x-icon name="eye" class="w-3.5 h-3.5" />
+                    Buka Preview
+                </a>
+
+                <form method="POST" action="{{ route('admin.appearance.discard') }}">
+                    @csrf
+                    <button
+                        type="submit"
+                        {{ $hasPendingDraft ? '' : 'disabled' }}
+                        class="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-rose-50 text-rose-600 text-xs font-bold rounded-xl border border-rose-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+                    >
+                        <x-icon name="rotate-ccw" class="w-3.5 h-3.5" />
+                        Buang Draft
+                    </button>
+                </form>
+
+                <form method="POST" action="{{ route('admin.appearance.publish') }}">
+                    @csrf
+                    <button
+                        type="submit"
+                        {{ $hasPendingDraft ? '' : 'disabled' }}
+                        class="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-900"
+                    >
+                        <x-icon name="check" class="w-3.5 h-3.5" />
+                        Publish Perubahan
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {{-- Tab nav --}}
+        <div data-reveal class="flex flex-wrap gap-2 bg-white/60 backdrop-blur-xl rounded-2xl border border-white/80 shadow-2xs p-2">
+            @php
+                $tabs = [
+                    'ringkasan' => ['label' => 'Ringkasan', 'icon' => 'layout'],
+                    'branding' => ['label' => 'Tema & Branding', 'icon' => 'palette'],
+                    'animasi' => ['label' => 'Animasi & Efek', 'icon' => 'zap'],
+                    'sections' => ['label' => 'Urutan & Isi Section', 'icon' => 'sliders'],
+                    'elemen' => ['label' => 'Elemen Halaman', 'icon' => 'layers'],
+                    'mode' => ['label' => 'Mode Situs', 'icon' => 'server'],
+                ];
+            @endphp
+            @foreach ($tabs as $key => $meta)
+                <button
+                    type="button"
+                    @click="tab = '{{ $key }}'"
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors"
+                    :class="tab === '{{ $key }}' ? 'bg-indigo-50/90 text-indigo-700 border border-indigo-100' : 'text-slate-600 hover:bg-slate-100/80 border border-transparent'"
+                >
+                    <x-icon :name="$meta['icon']" class="w-4 h-4 shrink-0" />
+                    <span>{{ $meta['label'] }}</span>
+                </button>
+            @endforeach
+        </div>
+
+        {{-- Tab: Ringkasan --}}
+        <div x-show="tab === 'ringkasan'" x-cloak data-reveal class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-6 space-y-3">
+            <h3 class="text-sm font-extrabold text-slate-900">Tentang menu ini</h3>
+            <p class="text-sm text-slate-600 leading-relaxed">
+                Menu ini adalah fondasi Iterasi 18 (Fase 4) — mekanisme <strong>Draft → Preview → Publish/Buang Draft</strong> yang akan dipakai semua fitur kustomisasi tampilan berikutnya (preset warna & logo di Iterasi 19, reorder section & jumlah item di Iterasi 20, sub-elemen & custom heading di Iterasi 21, mode maintenance di Iterasi 22).
+            </p>
+            <p class="text-sm text-slate-600 leading-relaxed">
+                Tab <strong>Animasi &amp; Efek</strong> sudah fungsional penuh sebagai bukti konsep alur draft/publish (toggle animasi reveal-on-scroll). Tab lain masih placeholder "segera hadir" — struktur menu dan mekanisme draft-nya sudah siap dipakai begitu form masing-masing dibangun.
+            </p>
+        </div>
+
+        {{-- Tab: Tema & Branding (placeholder — Iterasi 19) --}}
+        <div x-show="tab === 'branding'" x-cloak data-reveal class="flex flex-col items-center justify-center text-center py-16 bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50/80 text-indigo-600 flex items-center justify-center border border-indigo-100/60">
+                <x-icon name="palette" class="w-6 h-6" />
+            </div>
+            <div class="space-y-1">
+                <h3 class="text-base font-extrabold text-slate-900">Tema &amp; Branding — Segera Hadir</h3>
+                <p class="text-sm text-slate-500 max-w-md mx-auto">Preset warna aksen (4 pilihan) dan logo/branding direncanakan Iterasi 19.</p>
+            </div>
+        </div>
+
+        {{-- Tab: Animasi & Efek — FUNGSIONAL (bukti konsep Iterasi 18) --}}
+        <div x-show="tab === 'animasi'" x-cloak data-reveal class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-6 space-y-5">
+            <div>
+                <h3 class="text-sm font-extrabold text-slate-900">Animasi &amp; Efek</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Bukti konsep end-to-end mekanisme draft/publish Iterasi 18. Perubahan di sini tersimpan sebagai draft — cek "Buka Preview" untuk melihatnya sebelum Publish.</p>
+            </div>
+
+            <form method="POST" action="{{ route('admin.appearance.animations.update') }}" class="space-y-4">
+                @csrf
+                @method('PUT')
+
+                <div class="flex items-center justify-between gap-4 p-4 rounded-2xl border border-slate-200/70 bg-slate-50/60">
+                    <div class="min-w-0">
+                        <div class="text-sm font-bold text-slate-800">Reveal-on-scroll</div>
+                        <p class="text-xs text-slate-500 mt-0.5">Efek elemen muncul perlahan (fade + geser) saat di-scroll ke area layar. Nonaktifkan supaya konten langsung tampil tanpa animasi.</p>
+                    </div>
+
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" name="animations_enabled" value="1" class="peer sr-only" {{ $animationsEnabled ? 'checked' : '' }}>
+                        <div class="w-11 h-6 rounded-full bg-slate-300 peer-checked:bg-indigo-600 transition-colors relative">
+                            <div class="w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform"></div>
+                        </div>
+                    </label>
+                </div>
+
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-colors">
+                    <x-icon name="check" class="w-3.5 h-3.5" />
+                    Simpan sebagai Draft
+                </button>
+            </form>
+        </div>
+
+        {{-- Tab: Urutan & Isi Section — on/off (Iterasi 1) dipindah ke sini, reorder/heading placeholder Iterasi 20-21 --}}
+        <div x-show="tab === 'sections'" x-cloak class="space-y-4">
+            @include('admin.section-settings._list')
+        </div>
+
+        {{-- Tab: Elemen Halaman (placeholder — Iterasi 21) --}}
+        <div x-show="tab === 'elemen'" x-cloak data-reveal class="flex flex-col items-center justify-center text-center py-16 bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50/80 text-indigo-600 flex items-center justify-center border border-indigo-100/60">
+                <x-icon name="layers" class="w-6 h-6" />
+            </div>
+            <div class="space-y-1">
+                <h3 class="text-base font-extrabold text-slate-900">Elemen Halaman — Segera Hadir</h3>
+                <p class="text-sm text-slate-500 max-w-md mx-auto">Toggle CTA navbar, floating widget, dan social bar Hero direncanakan Iterasi 21.</p>
+            </div>
+        </div>
+
+        {{-- Tab: Mode Situs (placeholder — Iterasi 22) --}}
+        <div x-show="tab === 'mode'" x-cloak data-reveal class="flex flex-col items-center justify-center text-center py-16 bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50/80 text-indigo-600 flex items-center justify-center border border-indigo-100/60">
+                <x-icon name="server" class="w-6 h-6" />
+            </div>
+            <div class="space-y-1">
+                <h3 class="text-base font-extrabold text-slate-900">Mode Situs — Segera Hadir</h3>
+                <p class="text-sm text-slate-500 max-w-md mx-auto">Mode maintenance ("Segera Hadir" untuk visitor, admin tetap bisa lihat situs normal) direncanakan Iterasi 22.</p>
+            </div>
+        </div>
+    </div>
+@endsection

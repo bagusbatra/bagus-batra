@@ -47,7 +47,21 @@
             ['route' => 'admin.blog', 'label' => 'Blog', 'icon' => 'book-open'],
             ['route' => 'admin.testimonials', 'label' => 'Testimonials', 'icon' => 'quote'],
             ['route' => 'admin.messages', 'label' => 'Pesan Masuk', 'icon' => 'mail'],
-            ['route' => 'admin.section-settings', 'label' => 'Pengaturan Section', 'icon' => 'sliders'],
+            // Iterasi 18 (Fase 4): "Pengaturan Section" (Iterasi 1) DIGABUNG
+            // ke menu baru "Tampilan Halaman Index" (bukan menu terpisah) —
+            // on/off section yang sudah ada pindah jadi salah satu tab di
+            // halaman ini ("Urutan & Isi Section"), berdampingan dengan tab
+            // Ringkasan Draft/Live, Tema & Branding, Animasi & Efek, Elemen
+            // Halaman, Mode Situs. Alasan gabung (bukan terpisah): kedua
+            // menu sama-sama "mengatur bagaimana halaman index tampil" dari
+            // sudut pandang admin — memisahkannya jadi 2 menu sidebar akan
+            // terasa redundan (dua entri untuk konsep yang sama), dan
+            // indikator status Draft/Live + tombol Publish/Buang Draft
+            // perlu terlihat di SATU tempat yang menaungi semua sub-fitur
+            // Fase 4, bukan tersebar. Rute lama (admin.section-settings)
+            // TETAP ada & berfungsi (tidak dihapus) untuk kompatibilitas,
+            // hanya tidak lagi ditaut dari sidebar.
+            ['route' => 'admin.appearance', 'label' => 'Tampilan Halaman Index', 'icon' => 'palette'],
         ];
     @endphp
 

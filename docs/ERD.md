@@ -2,7 +2,7 @@
 
 Diupdate otomatis setiap ada perubahan skema (tabel/kolom/relasi baru).
 
-Terakhir diupdate: 2026-08-23 (setelah Iterasi 9 — polish & QA, perbaikan nullability kolom)
+Terakhir diupdate: 2026-08-24 (setelah Iterasi 18 — Fase 4, fondasi Draft/Publish)
 
 ## Catatan penting
 
@@ -163,13 +163,28 @@ erDiagram
         string label
         boolean is_active
         int sort_order
+        int display_count "nullable, ditambah Iterasi 18 — hanya relevan utk section list (projects/blog/testimonials)"
+        string heading_id "nullable, ditambah Iterasi 18"
+        string heading_en "nullable, ditambah Iterasi 18"
+        text subheading_id "nullable, ditambah Iterasi 18"
+        text subheading_en "nullable, ditambah Iterasi 18"
+        json draft_overrides "nullable, ditambah Iterasi 18 — partial field yg punya perubahan draft pending"
+    }
+
+    DISPLAY_SETTINGS {
+        bigint id PK
+        string setting_key UK "ditambah Iterasi 18, mis. animations_enabled"
+        text value "nullable — nilai LIVE, dibaca visitor publik"
+        text value_draft "nullable — nilai DRAFT pending, NULL = tidak ada perubahan pending"
+        timestamps created_at_updated_at
     }
 ```
 
-> Catatan render: seluruh tabel di diagram di atas — `PROJECTS`, `BLOG_POSTS`, `EXPERIENCES`, `TESTIMONIALS`, `SKILLS`, `CONTACT_MESSAGES`, `USERS`, `SITE_PROFILES`, `SOCIAL_LINKS`, `SECTION_SETTINGS` — **sudah ada** di database (MySQL `bagus_batra_portfolio`) dengan skema final Fase 1 (Iterasi 0-9 selesai, Fase 1 tuntas). `CONTACT_MESSAGES.is_read` ditambahkan di Iterasi 8; 8 kolom lain dijadikan nullable di Iterasi 9 (lihat riwayat di bawah) — tidak ada lagi kolom berstatus `[RENCANA]`.
+> Catatan render: seluruh tabel di diagram di atas — `PROJECTS`, `BLOG_POSTS`, `EXPERIENCES`, `TESTIMONIALS`, `SKILLS`, `CONTACT_MESSAGES`, `USERS`, `SITE_PROFILES`, `SOCIAL_LINKS`, `SECTION_SETTINGS`, `DISPLAY_SETTINGS` — **sudah ada** di database (MySQL `bagus_batra_portfolio`). `CONTACT_MESSAGES.is_read` ditambahkan di Iterasi 8; 8 kolom lain dijadikan nullable di Iterasi 9; `DISPLAY_SETTINGS` (tabel baru) dan 6 kolom baru di `SECTION_SETTINGS` ditambahkan di Iterasi 18 (Fase 4) — lihat riwayat di bawah. Tidak ada lagi kolom berstatus `[RENCANA]`.
 
 ## Riwayat perubahan skema
 
+- **2026-08-24 (Iterasi 18, Fase 4 — Kustomisasi Tampilan)** — Fondasi mekanisme Draft/Publish untuk kustomisasi tampilan halaman index. Tabel baru `display_settings` (`setting_key` unik, `value`/`value_draft` text nullable, timestamps) via migrasi `2026_08_24_035143_create_display_settings_table.php` — key-value generik untuk pengaturan tampilan (preset warna, logo, toggle animasi/efek, sub-elemen halaman, maintenance mode — bukan menambah kolom nullable ke `site_profiles`, supaya setting baru di Iterasi 19-22 tidak perlu migration berulang). 6 kolom baru di `section_settings` via migrasi `2026_08_24_035144_add_appearance_columns_to_section_settings_table.php`: `display_count` (unsignedInteger nullable, relevan utk section list), `heading_id`/`heading_en` (string nullable), `subheading_id`/`subheading_en` (text nullable), `draft_overrides` (JSON nullable — object partial berisi field yg punya perubahan draft pending, dipilih ketimbang kolom `*_draft` terpisah per field supaya field draft-able baru di iterasi berikutnya tidak perlu migration tambahan). Bukti konsep end-to-end (`animations_enabled` di `display_settings`) diverifikasi lolos 8/8 skenario draft→preview→publish/discard (lihat `docs/LOG-ITERASI.md` entri Iterasi 18) — tidak ada kehilangan/perubahan data existing, kedua migrasi murni `ADD COLUMN`/`CREATE TABLE`.
 - **2026-08-23 (Iterasi 9)** — Ditemukan saat regresi CRUD penuh (create tanpa mengisi field gambar/teks opsional): 8 kolom dibuat `NOT NULL` tanpa default sejak skema awal (sebelum Fase 1, saat digenerate dari seed data yang selalu lengkap), padahal validasi & form admin CRUD (Iterasi 3/4/6/7) semuanya sudah memperlakukan kolom ini sebagai opsional (`nullable` di rule validasi, tanpa atribut `required` di form) — inkonsistensi ini membuat create/update via admin **crash 500** setiap kali field terkait dikosongkan. Diperbaiki dengan 2 migrasi (`ALTER TABLE ... MODIFY ... NULL`, tanpa dependency `doctrine/dbal`): `projects.color_gradient`, `projects.accent_color`, `projects.image`, `blog_posts.cover_image`, `blog_posts.author_avatar`, `testimonials.avatar`, `testimonials.project_tag`, `skills.highlight_text` — semuanya dijadikan `nullable`. Tidak ada kehilangan data (5/4/3/12 baris seed yang ada sudah punya nilai non-null di kolom ini); tidak ada perubahan pada field yang publiknya benar-benar membutuhkan nilai (title, name, category, dst — semua tetap `NOT NULL` & `required`).
 - **2026-08-23 (Iterasi 8)** — Kolom baru `is_read` (boolean, default `false`) ditambahkan ke `contact_messages` via migrasi `2026_08_23_060959_add_is_read_to_contact_messages_table.php`. Dipakai untuk status baca/belum-dibaca pesan kontak di menu admin "Pesan Masuk" — ditandai otomatis `true` saat admin membuka detail pesan.
 - **2026-08-23 (Iterasi 7)** — Tidak ada perubahan skema. `testimonials` mendapat CRUD admin penuh dengan star rating picker interaktif; `testimonial_key` immutable dari sisi admin (sama pola dengan key iterasi sebelumnya).

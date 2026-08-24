@@ -27,11 +27,43 @@
 </head>
 <body
     x-data="appRoot()"
+    data-reveal-enabled="{{ ($animationsEnabled ?? true) ? '1' : '0' }}"
     class="min-h-screen bg-slate-50/80 text-slate-800 flex flex-col selection:bg-indigo-500/15 selection:text-indigo-900 font-sans relative overflow-x-hidden"
 >
-    {{-- Top Scroll Progress Indicator --}}
+    {{--
+        Banner mode Draft/Preview — Iterasi 18 (Fase 4). $appearancePreview
+        dibagikan ke SEMUA view lewat App\Http\Middleware\HandleAppearancePreview
+        (didaftarkan di grup middleware "web", lihat bootstrap/app.php), jadi
+        tersedia di layout manapun tanpa perlu di-pass eksplisit dari tiap
+        controller. HANYA tampil kalau mode preview benar-benar aktif (admin
+        login + flag session preview menyala) — visitor biasa tidak pernah
+        melihat banner ini. Sticky di atas scroll-progress-bar (z lebih
+        tinggi), warna amber supaya jelas beda dari progress bar indigo.
+    --}}
+    @if ($appearancePreview ?? false)
+        <div class="sticky top-0 inset-x-0 z-[60] bg-amber-500 text-amber-950 text-xs sm:text-sm font-bold px-4 py-2 flex items-center justify-center gap-3 flex-wrap shadow-sm">
+            <span class="flex items-center gap-1.5">
+                <x-icon name="eye" class="w-4 h-4 shrink-0" />
+                Anda sedang melihat mode Draft/Preview — pengunjung biasa TIDAK melihat perubahan ini sampai di-publish.
+            </span>
+            <a href="{{ request()->fullUrlWithQuery(['preview' => 0]) }}" class="underline hover:no-underline">
+                Keluar dari Mode Preview
+            </a>
+        </div>
+    @endif
+
+    {{--
+        Top Scroll Progress Indicator — diubah dari `fixed` jadi `sticky`
+        (Iterasi 18, Fase 4) supaya SELALU berada tepat di bawah banner
+        Draft/Preview di atas ini kalau banner sedang tampil, alih-alih
+        tumpang tindih di posisi yang sama (dua elemen `fixed top-0` akan
+        saling menutupi). `sticky` pada sibling normal-flow tetap
+        menghasilkan efek "selalu terlihat saat scroll" yang sama seperti
+        `fixed` untuk elemen setipis ini, karena elemen sebelumnya (banner)
+        sudah menempati ruang di atasnya duluan dalam alur dokumen.
+    --}}
     <div
-        class="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 via-purple-500 to-blue-500 origin-left z-50 shadow-sm shadow-indigo-500/30"
+        class="sticky top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 via-purple-500 to-blue-500 origin-left z-50 shadow-sm shadow-indigo-500/30"
         :style="'transform: scaleX(' + scrollProgress + '); transition: transform 120ms linear;'"
     ></div>
 

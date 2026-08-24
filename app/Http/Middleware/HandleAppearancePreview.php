@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use App\Models\DisplaySetting;
+use App\Models\SectionSetting;
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * Iterasi 18 (Fase 4) — menentukan "apakah request ini melihat draft" dan
+ * membagikannya ke SEMUA view lewat view()->share(), supaya berlaku
+ * site-wide (logo/warna aksen/dst dipakai di layouts/app.blade.php yang
+ * shared oleh semua halaman publik), bukan cuma halaman index. Lihat
+ * docs/RENCANA-KUSTOMISASI-TAMPILAN.md bagian 3 baris "Preview sebelum
+ * publish" & Iterasi 18.
+ *
+ * Didaftarkan di grup middleware "web" (bootstrap/app.php) — berlaku utk
+ * SEMUA route (publik & admin) karena keduanya hanya pakai routing "web".
+ *
+ * Mekanisme penanda: query string `?preview=1` (butuh admin login, guard
+ * "web") menyalakan flag di SESSION (`appearance_preview`) supaya tidak
+ * perlu ditempel di setiap link — klik link internal apa pun tetap dalam
+ * mode preview selama session aktif. `?preview=0` mematikannya lagi
+ * (dipakai tombol "Keluar dari Mode Preview").
+ */
+class HandleAppearancePreview
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        if ($request->query('preview') === '0') {
+            $request->session()->forget('appearance_preview');
+        } elseif ($request->query('preview') === '1' && auth()->guard('web')->check()) {
+            $request->session()->put('appearance_preview', true);
+        }
+
+        // Preview HANYA aktif kalau (a) user login (guard web, sama seperti
+        // admin) DAN (b) flag session menyala. Pengunjung yang tidak login
+        // TIDAK PERNAH bisa mengaktifkan preview meski menambahkan
+        // ?preview=1 di URL — dicek eksplisit di sini, bukan cuma di form
+        // pengecekan di atas, supaya kondisi ini selalu final apa pun
+        // urutan pemrosesan query di atas.
+        $previewActive = auth()->guard('web')->check() && (bool) $request->session()->get('appearance_preview', false);
+
+        $request->attributes->set('appearance_preview', $previewActive);
+
+        $animationsEnabled = DisplaySetting::getBool('animations_enabled', true, $previewActive);
+
+        $hasPendingDraft = $previewActive
+            ? (DisplaySetting::hasPendingDraft() || SectionSetting::query()->whereNotNull('draft_overrides')->exists())
+            : false;
+
+        view()->share('appearancePreview', $previewActive);
+        view()->share('animationsEnabled', $animationsEnabled);
+        view()->share('appearanceHasDraft', $hasPendingDraft);
+
+        return $next($request);
+    }
+}

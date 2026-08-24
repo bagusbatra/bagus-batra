@@ -7,6 +7,25 @@ import Alpine from 'alpinejs';
  * public-only concerns (scroll-spy, mobile drawer, floating widget).
  * ------------------------------------------------------------------ */
 export function initRevealOnScroll() {
+    // Iterasi 18 (Fase 4) — bukti konsep end-to-end setting
+    // `animations_enabled` (lihat App\Models\DisplaySetting,
+    // App\Http\Middleware\HandleAppearancePreview). Nilai efektif
+    // (mempertimbangkan draft/preview di sisi server) dikirim sebagai
+    // `data-reveal-enabled` di <body> oleh resources/views/layouts/app.blade.php
+    // — dibaca langsung dari DOM di sini (server-rendered), TIDAK query API
+    // terpisah. Body admin layout tidak memiliki atribut ini sama sekali,
+    // jadi `undefined !== '0'` tetap true (default aktif) — panel admin
+    // sendiri tidak ikut terpengaruh setting tampilan situs publik.
+    const enabled = document.body?.dataset.revealEnabled !== '0';
+
+    if (!enabled) {
+        // Animasi dimatikan: tampilkan langsung semua elemen [data-reveal]
+        // tanpa observer, supaya konten tidak "nyangkut" tersembunyi
+        // (CSS elemen ini default opacity-0 sebelum class .is-visible).
+        document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('is-visible'));
+        return;
+    }
+
     const observer = new IntersectionObserver(
         (entries) => {
             entries.forEach((entry) => {
