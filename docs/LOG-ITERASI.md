@@ -29,6 +29,91 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 19 — Preset Warna Aksen & Logo/Branding + Beres-beres `playground`/`skills` (selesai: 2026-08-24)
+Status: Selesai — **Fase 4 (Kustomisasi Tampilan Halaman Index), lanjutan Iterasi 18.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-KUSTOMISASI-TAMPILAN.md` bagian 5 Iterasi 19, ditambah 1 tugas beres-beres yang secara eksplisit dicatat sebagai temuan "di luar scope" di entri Iterasi 18. **Kondisi awal sesi**: `git status --short` **BERSIH**, `git log` mengonfirmasi seluruh Iterasi 18 (`5897762`) sudah ter-commit oleh user — tidak disentuh/direvert, pekerjaan sesi ini ditumpuk di atasnya. Dua bagian dikerjakan dalam satu sesi berurutan:
+
+**Bagian A — Beres-beres `playground` & `skills` di `section_settings`:**
+
+1. **Baris `playground` dihapus** lewat migration data-cleanup baru `2026_08_24_090000_remove_playground_section_setting_row.php` (`up()`: `DELETE ... WHERE section_key='playground'`, lalu merapikan `sort_order` 8 baris sisa jadi 0-7 tanpa lubang; `down()`: sengaja **no-op** — dijelaskan di komentar migration bahwa insert-ulang baris untuk fitur yang sudah permanen dihapus dari kode hanya akan menciptakan ulang masalah "baris yatim" yang sedang diperbaiki). `SectionSettingSeeder` diupdate senada (baris `playground` dihapus dari array seed, `sort_order` 4 section setelahnya digeser -1) supaya `migrate:fresh --seed` di masa depan menghasilkan 8 baris, bukan 9 lagi. Migration dijalankan (`php artisan migrate`) — DB dikonfirmasi via tinker: 8 baris tersisa (`hero, about, skills, projects, experience, blog, testimonials, contact`), `sort_order` 0-7 rapat.
+2. **Toggle `skills` — TEMUAN: sudah fungsional, bukan bug.** Investigasi `resources/views/portfolio/partials/about.blade.php` menunjukkan blok grid skills SUDAH dibungkus `@if ($sectionActive['skills'] ?? true)` sejak commit `33db39a` ("Iterasi 1: dashboard + toggle aktif/nonaktif section publik") — jauh sebelum Fase 4. Catatan "yatim/tidak mengontrol apapun" di entri Iterasi 18 ternyata mengacu HANYA pada fakta `skills` tidak punya `@if`/`@include` sendiri di level `portfolio/index.blade.php` (benar — nested di dalam partial `about`, bukan section top-level), BUKAN berarti togglenya rusak/tidak berefek. Ditambahkan komentar penjelasan di `about.blade.php` yang meluruskan nuansa ini untuk pembaca berikutnya (termasuk Iterasi 20): karena "skills" bukan section top-level sungguhan, `is_active`-nya HANYA mengontrol visibility grid, TIDAK relevan untuk reorder posisi (Iterasi 20 akan beroperasi di 8 baris top-level, "skills" dikecualikan karena tidak punya posisi DOM independen). Toggle tetap **direct-to-live** (bukan draft-aware) sama seperti section lain — sesuai keputusan eksplisit di catatan Iterasi 18 bahwa retrofit toggle on/off ke layer draft ditunda sampai Iterasi 20 (reorder), tidak diubah di sini supaya perilaku toggle tidak dirombak dua kali.
+3. **Grep referensi lain ke `playground`**: ditemukan di `resources/views/admin/section-settings/_list.blade.php` (`$iconMap['playground']`, dead entry — dihapus), `app/Http/Controllers/Admin/PlaceholderController.php` & `routes/admin.php`/`resources/views/admin/layouts/app.blade.php` (menu sidebar admin **"Playground"** — placeholder generik utk fitur admin masa depan terkait section Playground, sudah ada sejak Iterasi 0, TIDAK query `section_key`, di luar scope literal "referensi ke `section_key='playground'`" — **sengaja tidak disentuh**, karena mengubah/menghapus seluruh menu placeholder itu adalah keputusan UX terpisah yang tidak diminta), `database/seeders/ProjectSeeder.php` (kata "playground" muncul di teks deskripsi 1 project — konten bisnis asli, bukan referensi ke section, tidak disentuh), dan beberapa file dokumentasi (`docs/*.md` — histori, sengaja tidak diubah kecuali entri baru).
+
+**Bagian B — Iterasi 19 (Preset Warna Aksen & Logo/Branding), sesuai rencana:**
+
+1. **CSS custom properties**: `resources/css/app.css` — `:root { --accent-50, --accent-100, --accent-300, --accent-500, --accent-600, --accent-700 }` (6 step, BUKAN skala 50-950 penuh — di-grep dulu step mana yang benar-benar dipakai elemen brand-accent sebelum memutuskan skala ini). Default statis = nilai Indigo (fallback murni; nilai aktif SELALU di-override per-request oleh inline `<style>` di layout, lihat poin 4).
+2. **`App\Support\AccentPreset`** (kelas baru) — 4 preset kurasi (`indigo` default, `emerald`, `rose`, `amber`), nilai hex tiap step disamakan PERSIS dengan skala resmi Tailwind (mis. indigo-600 `#4f46e5`, emerald-600 `#059669`, rose-600 `#e11d48`, amber-600 `#d97706`) supaya kontras & aksesibilitas terjaga — bukan color picker bebas (sesuai batasan Fase 4 bagian 6).
+3. **Elemen yang dikonversi jadi accent-aware** (scope realistis, BUKAN exhaustive recolor — keputusan detail & alasan tiap batas didokumentasikan di "Catatan untuk review" di bawah):
+   - **CTA utama (Hire Me/Rekrut Saya)**: `navbar.blade.php` `#nav-hire-me-btn` (desktop) & `#mobile-contact-cta-btn` (drawer mobile); `hero.blade.php` `#hero-explore-projects-btn` (CTA utama Hero, pola visual identik dgn Hire Me: `bg-slate-900 hover:bg-[var(--accent-600)]`).
+   - **Pill nav aktif navbar**: link desktop aktif, link mobile-drawer aktif (bg/text/border), dot indikator aktif.
+   - **Badge label section** ("kotak kecil di atas judul", pola `bg-indigo-50/80 text-indigo-700 border-indigo-100`) — diterapkan ke SEMUA section yang punya badge ini: `about`, `projects` (home), `blog`, `experience`, `contact`, `projects/index.blade.php` (katalog). Badge `testimonials` (amber, bukan indigo) sengaja tidak disentuh — beda warna by design.
+   - **Gradient judul Hero**: `hero.blade.php` — `from-indigo-600 ... to-indigo-500` → accent (stop tengah `via-blue-600` sengaja dipertahankan, bukan bagian preset).
+   - **Border/shadow hover card (project & skill card)**: `hover:border-indigo-300/80` di `projects.blade.php` (home), `projects/index.blade.php` (katalog), `projects/show.blade.php` (related projects) — 3 lokasi component "project card" yang sama; `about.blade.php` skill card (border + icon box + title hover). Card blog/experience/testimonials **sengaja TIDAK diikutkan** — task secara literal menyebut "project card, skill card" saja.
+   - **Tombol filter aktif (kategori project/skill)**: `about.blade.php` (filter skill), `projects.blade.php` (home) & `projects/index.blade.php` (katalog) — filter kategori project. Filter/tag blog **sengaja TIDAK diikutkan** (literal scope "kategori project/skill").
+   - Elemen yang SENGAJA dibiarkan indigo statis (di luar 6 kategori scope): scroll-progress-bar & ambient blob di layout (dekoratif multi-hue), logo mark/wordmark navbar-footer (mekanisme terpisah, lihat poin 5), text-link biasa (mis. "Detail Case Study", "Baca Selengkapnya", breadcrumb) yang memakai warna indigo tapi bukan CTA/badge/filter/card-hover, timeline dot & garis vertikal di Experience, ikon-ikon dekoratif kecil di dalam card/button.
+4. **Penerapan preset — inline `<style>` server-rendered di `<head>`** (`resources/views/layouts/app.blade.php`, setelah `@vite(...)`, membaca `$accentPreset` yang dibagikan `App\Http\Middleware\HandleAppearancePreview` ke SEMUA view — preview-aware persis pola `$animationsEnabled` Iterasi 18) — BUKAN lewat JS runtime, supaya tidak ada flash-of-wrong-color. Diletakkan setelah `@vite` supaya cascade `:root` di sini menang atas default statis di `app.css`.
+5. **Logo & branding**: 2 setting baru `logo_type` (`text|image`, default `text`) & `logo_image` (path storage, nullable) di `display_settings`. Upload mengikuti pola persis `Admin\ProjectController`/`Admin\TestimonialController` (`$file->store('branding', 'public')` → `Storage::url()`). `navbar.blade.php` & `footer.blade.php` diupdate: `@if (logo_type==='image' && logo_image terisi)` tampilkan `<img>` (width/height eksplisit, `loading="eager"` navbar / `loading="lazy"` footer, konsisten pola Iterasi 14), else fallback ke logo teks "Bagus.dev" — TIDAK PERNAH kosong.
+6. **Setting tersimpan lewat alur draft/publish Iterasi 18** — `AppearanceController@updateBranding()` (route baru `PUT /admin/appearance/branding`) menulis ke `DisplaySetting::setDraft()` untuk ketiga key (`accent_preset`, `logo_type`, `logo_image`). **`publish()`/`discardDraft()` TIDAK PERLU diubah SAMA SEKALI** — keduanya sudah generik sejak didesain di Iterasi 18 (loop semua `display_settings.value_draft` non-null), persis seperti yang direncanakan. Tab "Tema & Branding" (`admin/appearance/index.blade.php`) diubah dari placeholder jadi form fungsional: 4 swatch preset (radio + dot warna), pilihan tipe logo (Alpine `x-show` utk toggle field upload), preview logo saat ini kalau ada.
+
+### File/area utama yang berubah
+- **Migrasi baru**: `database/migrations/2026_08_24_090000_remove_playground_section_setting_row.php`.
+- **Seeder diubah**: `database/seeders/SectionSettingSeeder.php` (baris `playground` dihapus, `sort_order` dirapikan).
+- **Kelas baru**: `app/Support/AccentPreset.php` (4 preset warna, `get()`/`keys()`).
+- **Model**: tidak ada perubahan (`DisplaySetting`/`SectionSetting` Iterasi 18 sudah cukup generik).
+- **Middleware diubah**: `app/Http/Middleware/HandleAppearancePreview.php` — tambah share `$accentPreset`/`$logoType`/`$logoImage` (preview-aware, pola sama `$animationsEnabled`).
+- **Controller diubah**: `app/Http/Controllers/Admin/AppearanceController.php` — `index()` pass data branding tambahan, method baru `updateBranding()`.
+- **Route baru**: `routes/admin.php` — `PUT admin/appearance/branding` (`admin.appearance.branding.update`).
+- **View diubah**: `resources/views/admin/appearance/index.blade.php` (tab Tema & Branding jadi fungsional), `resources/views/admin/section-settings/_list.blade.php` (hapus entry `playground` dari `$iconMap`), `resources/views/components/icon.blade.php` (tambah icon `image`), `resources/views/layouts/app.blade.php` (inline `<style>` accent vars di `<head>`), `resources/views/portfolio/partials/{navbar,footer}.blade.php` (logo conditional + accent), `resources/views/portfolio/partials/{hero,about,projects,blog,experience,contact}.blade.php`, `resources/views/projects/{index,show}.blade.php` (accent-aware sesuai daftar poin 3 Bagian B), `resources/views/portfolio/partials/about.blade.php` (komentar klarifikasi toggle skills, Bagian A poin 2).
+- **CSS diubah**: `resources/css/app.css` (custom properties `--accent-*`).
+- **Asset**: `npm run build` dijalankan ulang (kelas Tailwind arbitrary-value baru `bg-[var(--accent-600)]` dkk perlu di-scan ulang & masuk `public/build` — gitignored, tidak masuk `git status`).
+
+### Migrasi & seeder dijalankan
+- `php artisan migrate` — 1 migrasi baru (`remove_playground_section_setting_row`) sukses. Dikonfirmasi via tinker: `SectionSetting::count()` = 8 (dari 9), `sort_order` 0-7 tanpa lubang.
+- Tidak ada seeder dijalankan ulang di sesi ini (seeder diupdate untuk instalasi masa depan, DB yang sudah ada dibersihkan lewat migration, bukan re-seed).
+
+### Verifikasi
+**Via `php artisan serve --port=8180` + `curl` sungguhan (cookie jar utk sesi login admin), `storage/logs/laravel.log` dikosongkan sebelum sesi, dicek `wc -l` di beberapa titik → konsisten 0 baris sepanjang seluruh sesi.**
+
+**Bagian A:**
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | `GET /admin/appearance?tab=sections` (list section) setelah migration | **LOLOS** — "Daftar Section (8)", tidak ada lagi baris "playground" (dicek `grep -c playground` hanya cocok 2x, keduanya link sidebar admin "Playground" placeholder yang tidak terkait) |
+| 2 | Toggle `skills` OFF (`PATCH /admin/section-settings/3/toggle`, mekanisme direct-live Iterasi 1 — bukan draft, sesuai catatan Iterasi 18) | **LOLOS** — `GET /` sesudahnya: `id="skills"` 0 kemunculan, `id="about"` & teks bio About tetap 1 kemunculan (konten About lain utuh) |
+| 3 | Toggle `skills` ON lagi | **LOLOS** — `id="skills"` kembali 1 kemunculan |
+
+**Bagian B:**
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | Baseline sebelum draft apapun | **LOLOS** — `GET /` (no cookie): `--accent-600: #4f46e5;` (indigo), tanpa banner preview |
+| 2 | Set draft `accent_preset=emerald` (`PUT /admin/appearance/branding`) | **LOLOS** — DB: `value=NULL, value_draft='emerald'` (baris baru via `updateOrCreate`) |
+| 3 | `GET /` TANPA cookie (visitor biasa) setelah draft | **LOLOS** — tetap `--accent-600: #4f46e5;` (draft tidak bocor) |
+| 4 | `GET /` DENGAN cookie admin, TANPA `?preview=1` | **LOLOS** — tetap indigo (preview belum aktif) |
+| 5 | Aktifkan preview (`?preview=1`) | **LOLOS** — `--accent-600: #059669;` (emerald), banner draft muncul 1x |
+| 6 | `GET /projects` & `GET /projects/lumina-saas` dalam mode preview (session persist) | **LOLOS** — keduanya `--accent-600: #059669;` juga (accent konsisten di semua halaman lewat layout yang sama) |
+| 7 | `POST /admin/appearance/publish` | **LOLOS** — DB: `value='emerald', value_draft=NULL`; `GET /` & `GET /projects` TANPA cookie sekarang emerald (74 kemunculan `var(--accent-600)` di HTML index, tersebar di badge/CTA/pill/filter/card-hover yg dikonversi) |
+| 8 | Upload logo gambar sbg draft (`logo_type=image` + file PNG test) | **LOLOS** — DB: `logo_image.value_draft` terisi path storage, `logo_type.value_draft='image'`; `GET /` TANPA cookie: 0 kemunculan path logo (draft tidak bocor), masih logo teks |
+| 9 | Preview (admin+`?preview=1`) | **LOLOS** — 2 kemunculan `<img>` logo (navbar + footer), file diverifikasi bisa diakses via `GET /storage/branding/....png` → 200 |
+| 10 | Publish logo | **LOLOS** — `GET /` TANPA cookie: logo gambar sekarang tampil (2 kemunculan) |
+| 11 | Restore baseline: draft `accent_preset=indigo` + `logo_type=text` → publish | **LOLOS** — DB akhir: `accent_preset.value='indigo'`, `logo_type.value='text'` (value_draft NULL semua); `GET /` visitor: `--accent-600: #4f46e5;`, logo kembali teks "Bagus.dev" (0 kemunculan `<img>` logo) |
+| 12 | Housekeeping tambahan | Baris `display_settings` utk `logo_image` & file test upload (`storage/app/public/branding/*.png`) dihapus manual di akhir sesi (bukan bagian alur draft/publish — cuma pembersihan artefak uji, tidak memengaruhi baseline situs krn `logo_type` sudah kembali `text`) |
+
+**Regresi tambahan**: `GET /`, `/projects`, `/projects/lumina-saas`, `/admin/dashboard`, `/admin/appearance`, `/admin/section-settings` → semua **200**. Tab "Tema & Branding" dicek render dgn radio `indigo` ter-checked & tanpa preview logo (kondisi akhir). Server dimatikan di akhir sesi (`taskkill` PID, dikonfirmasi request berikutnya `000`/connection refused).
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user.
+
+### Catatan untuk review
+- **Kesalahpahaman kunci klarifikasi tugas**: toggle `skills` yang dikira "tidak fungsional" ternyata SUDAH bekerja sejak Iterasi 1 — hanya catatan Iterasi 18 yang agak ambigu (fokus ke "tidak ada `@if` di level index.blade.php", bukan "togglenya rusak"). Tidak ada perbaikan KODE yang diperlukan untuk poin ini, hanya klarifikasi via komentar + verifikasi ulang.
+- **Batasan scope preset warna — keputusan literal, didokumentasikan supaya tidak dianggap "lupa"**: task menyebut 6 kategori elemen brand-accent secara eksplisit (CTA utama navbar+hero, pill nav navbar, badge label section, gradient Hero, border-hover project/skill card, filter aktif project/skill). Diikuti SECARA LITERAL — tidak diperluas ke elemen indigo lain yang terlihat mirip (mis. card blog/experience/testimonials TIDAK diikutkan meski sama-sama pakai `hover:border-indigo-300/80`, karena task hanya menyebut "project card, skill card"; text-link seperti "Detail Case Study"/"Baca Selengkapnya" TIDAK diikutkan karena bukan CTA/badge/filter/card-hover). Satu-satunya perluasan disengaja dari daftar literal: badge label section diterapkan ke SEMUA section yang punya badge (bukan cuma yang dicontohkan "Karya Pilihan"), karena task eksplisit menulis "tiap section". Hasilnya: masih ada elemen ber-`bg-indigo-*`/`text-indigo-*` statis tersisa di kode (scroll-progress-bar, ambient blob, logo mark, dot timeline Experience, banyak text-link) — ini SENGAJA, konsisten dengan instruksi "bukan exhaustive recolor".
+- **Logo pada footer memakai background gelap** (`bg-slate-900`) — kalau admin upload logo gambar yang didesain untuk background terang (mis. logo dgn teks gelap tanpa padding), hasilnya bisa kurang kontras di footer. Ini keterbatasan yang melekat pada fitur "1 logo utk semua tempat" (bukan bug kode) — tidak ada logo terpisah utk navbar vs footer, sesuai rencana (hanya 1 `logo_image`/`logo_type`, bukan variant per lokasi).
+- **`down()` migration playground sengaja no-op** (bukan insert-ulang baris) — dijelaskan lengkap di komentar migration; keputusan sadar karena section-nya sendiri sudah permanen tidak ada di kode.
+- **`publish()`/`discardDraft()` di `AppearanceController` TIDAK disentuh sama sekali** untuk Iterasi 19 — bukti bahwa desain generik Iterasi 18 benar-benar bekerja seperti direncanakan (bagian 3 rencana: "Iterasi 19-22 tidak perlu controller publish/discard baru").
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai batasan tugas.
+
+---
+
 ## Iterasi 18 — Fondasi: Draft/Publish + Skema Baru (selesai: 2026-08-24)
 Status: Selesai — **Fase 4 (Kustomisasi Tampilan Halaman Index), iterasi pembuka.**
 

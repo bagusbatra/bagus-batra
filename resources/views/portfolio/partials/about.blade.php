@@ -45,7 +45,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 sm:space-y-20">
         {{-- Section Header --}}
         <div data-reveal class="max-w-3xl space-y-3">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-indigo-50/80 backdrop-blur-md text-indigo-700 border border-indigo-100 text-xs font-bold uppercase tracking-wider">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[var(--accent-50)]/80 backdrop-blur-md text-[var(--accent-700)] border border-[var(--accent-100)] text-xs font-bold uppercase tracking-wider">
                 <x-icon name="award" class="w-3.5 h-3.5" />
                 <span x-show="$store.lang.current === 'id'">Tentang &amp; Prinsip Rekayasa</span>
                 <span x-show="$store.lang.current === 'en'" x-cloak>About &amp; Engineering Values</span>
@@ -86,6 +86,26 @@
             "skills"). Toggling "about" off hides this whole block too
             (it's nested); toggling "skills" off while "about" stays on
             hides just this sub-block, keeping the About copy visible.
+
+            Iterasi 19 (Fase 4) note: re-verified this `@if` — it has been
+            here since Iterasi 1 (33db39a) and DOES already gate the grid
+            correctly (confirmed via toggle→publish cycle, see
+            docs/LOG-ITERASI.md Iterasi 19). The Iterasi 18 log entry's
+            "yatim/tidak mengontrol apapun" note was about `skills` never
+            having its own top-level `@if`/`@include` in
+            portfolio/index.blade.php (true — it's nested, not a real
+            top-level section), NOT about this toggle being broken. Because
+            "skills" isn't a real top-level section, its is_active flag
+            ONLY controls this sub-block's visibility — it has no bearing
+            on section ORDER/POSITION (Iterasi 20's reorder feature will
+            operate on the 8 real top-level rows in section_settings,
+            "skills" excluded, since there's no independent DOM position
+            to reorder). Toggle is still direct-to-live (not draft-aware)
+            like every other section on/off switch — retrofitting ALL
+            section toggles to the draft/publish layer is explicitly
+            deferred to Iterasi 20 (see Iterasi 18 log "Catatan untuk
+            review"), not changed here to avoid touching that behavior
+            twice.
         --}}
         @if ($sectionActive['skills'] ?? true)
         <div id="skills" x-data="aboutSection()" class="pt-4 sm:pt-8 space-y-6 sm:space-y-8">
@@ -108,7 +128,7 @@
                             id="skill-filter-{{ $cat['id'] }}"
                             @click="category = '{{ $cat['id'] }}'"
                             class="relative px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
-                            :class="category === '{{ $cat['id'] }}' ? 'text-indigo-600 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'"
+                            :class="category === '{{ $cat['id'] }}' ? 'text-[var(--accent-600)] font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'"
                         >
                             <span x-show="category === '{{ $cat['id'] }}'" class="absolute inset-0 bg-white shadow-2xs border border-white/90 rounded-xl -z-10"></span>
                             <span x-show="$store.lang.current === 'id'">{{ $cat['id_label'] }}</span>
@@ -126,10 +146,10 @@
                         id="skill-card-{{ \Illuminate\Support\Str::slug($skill->name) }}"
                         x-show="category === 'all' || category === '{{ $skill->category }}'"
                         x-transition
-                        class="p-5 sm:p-5.5 bg-white/60 backdrop-blur-lg rounded-3xl border border-white/80 hover:border-indigo-300/80 shadow-2xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden"
+                        class="p-5 sm:p-5.5 bg-white/60 backdrop-blur-lg rounded-3xl border border-white/80 hover:border-[var(--accent-300)]/80 shadow-2xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden"
                     >
                         <div class="flex items-start justify-between gap-3 mb-3">
-                            <div class="w-10 h-10 rounded-xl bg-white/80 border border-white flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0 shadow-2xs">
+                            <div class="w-10 h-10 rounded-xl bg-white/80 border border-white flex items-center justify-center text-[var(--accent-600)] group-hover:bg-[var(--accent-600)] group-hover:text-white transition-colors shrink-0 shadow-2xs">
                                 <x-icon :name="$skillIconMap[$skill->icon_name] ?? 'code2'" class="w-5 h-5" />
                             </div>
                             <div class="text-right">
@@ -138,7 +158,7 @@
                             </div>
                         </div>
 
-                        <h4 class="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{{ $skill->name }}</h4>
+                        <h4 class="text-sm font-bold text-slate-900 group-hover:text-[var(--accent-600)] transition-colors">{{ $skill->name }}</h4>
                         <p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{{ $skill->highlight_text }}</p>
 
                         {{-- Visual Progress Bar --}}

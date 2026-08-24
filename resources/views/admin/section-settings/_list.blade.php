@@ -14,7 +14,6 @@
         'about' => 'user',
         'skills' => 'cpu',
         'projects' => 'folder-git-2',
-        'playground' => 'zap',
         'experience' => 'briefcase',
         'blog' => 'book-open',
         'testimonials' => 'quote',

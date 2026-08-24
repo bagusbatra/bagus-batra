@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\DisplaySetting;
 use App\Models\SectionSetting;
+use App\Support\AccentPreset;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -47,6 +48,18 @@ class HandleAppearancePreview
 
         $animationsEnabled = DisplaySetting::getBool('animations_enabled', true, $previewActive);
 
+        // Iterasi 19 (Fase 4) — preset warna aksen & logo/branding, kedua
+        // pengguna KEDUA dari alur draft/publish generik (setelah
+        // animations_enabled di Iterasi 18). Dihitung di sini (bukan cuma
+        // di AppearanceController) supaya tersedia di SEMUA halaman publik
+        // lewat view()->share(), sama seperti $animationsEnabled — dipakai
+        // resources/views/layouts/app.blade.php (<style> accent vars di
+        // <head>) & portfolio/partials/navbar.blade.php + footer.blade.php
+        // (logo teks vs gambar).
+        $accentPreset = DisplaySetting::get('accent_preset', AccentPreset::DEFAULT, $previewActive);
+        $logoType = DisplaySetting::get('logo_type', 'text', $previewActive);
+        $logoImage = DisplaySetting::get('logo_image', null, $previewActive);
+
         $hasPendingDraft = $previewActive
             ? (DisplaySetting::hasPendingDraft() || SectionSetting::query()->whereNotNull('draft_overrides')->exists())
             : false;
@@ -54,6 +67,9 @@ class HandleAppearancePreview
         view()->share('appearancePreview', $previewActive);
         view()->share('animationsEnabled', $animationsEnabled);
         view()->share('appearanceHasDraft', $hasPendingDraft);
+        view()->share('accentPreset', $accentPreset);
+        view()->share('logoType', $logoType);
+        view()->share('logoImage', $logoImage);
 
         return $next($request);
     }

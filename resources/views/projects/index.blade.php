@@ -39,7 +39,7 @@
             {{-- Section Title --}}
             <div data-reveal class="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div class="max-w-2xl space-y-3">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-indigo-50/80 backdrop-blur-md text-indigo-700 border border-indigo-100 text-xs font-bold uppercase tracking-wider">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[var(--accent-50)]/80 backdrop-blur-md text-[var(--accent-700)] border border-[var(--accent-100)] text-xs font-bold uppercase tracking-wider">
                         <x-icon name="folder-git-2" class="w-3.5 h-3.5" />
                         <span x-show="$store.lang.current === 'id'">Katalog Lengkap</span>
                         <span x-show="$store.lang.current === 'en'" x-cloak>Full Catalog</span>
@@ -63,7 +63,7 @@
                             class="relative px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
                             :class="category === '{{ $cat['id'] }}' ? 'text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'"
                         >
-                            <span x-show="category === '{{ $cat['id'] }}'" class="absolute inset-0 bg-indigo-600 rounded-xl shadow-xs -z-10"></span>
+                            <span x-show="category === '{{ $cat['id'] }}'" class="absolute inset-0 bg-[var(--accent-600)] rounded-xl shadow-xs -z-10"></span>
                             <span x-show="$store.lang.current === 'id'">{{ $cat['id_label'] }}</span>
                             <span x-show="$store.lang.current === 'en'" x-cloak>{{ $cat['en_label'] }}</span>
                         </button>
@@ -85,7 +85,7 @@
                             x-show="category === 'All' || category === '{{ $project->category }}'"
                             x-transition
                             id="catalog-card-{{ $project->project_key }}"
-                            class="group bg-white/60 backdrop-blur-lg rounded-3xl border border-white/80 shadow-2xs hover:shadow-xl hover:border-indigo-300/80 hover:-translate-y-1.5 transition-all duration-300 flex flex-col overflow-hidden"
+                            class="group bg-white/60 backdrop-blur-lg rounded-3xl border border-white/80 shadow-2xs hover:shadow-xl hover:border-[var(--accent-300)]/80 hover:-translate-y-1.5 transition-all duration-300 flex flex-col overflow-hidden"
                         >
                             {{-- Project Image Banner --}}
                             <div class="relative h-48 sm:h-52 overflow-hidden bg-slate-100">
@@ -123,7 +123,7 @@
                             {{-- Card Content Body --}}
                             <div class="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
                                 <div class="space-y-2">
-                                    <h3 class="text-lg font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">{{ $project->title }}</h3>
+                                    <h3 class="text-lg font-extrabold text-slate-900 group-hover:text-[var(--accent-600)] transition-colors">{{ $project->title }}</h3>
                                     <p class="text-xs text-slate-600 leading-relaxed line-clamp-2">{{ $project->description }}</p>
                                 </div>
 

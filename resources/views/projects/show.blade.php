@@ -275,7 +275,7 @@
                         @foreach ($related as $r)
                             <a
                                 href="{{ route('projects.show', $r) }}"
-                                class="group bg-white/60 backdrop-blur-lg rounded-2xl border border-white/80 shadow-2xs hover:shadow-lg hover:border-indigo-300/80 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col"
+                                class="group bg-white/60 backdrop-blur-lg rounded-2xl border border-white/80 shadow-2xs hover:shadow-lg hover:border-[var(--accent-300)]/80 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col"
                             >
                                 <div class="relative h-32 overflow-hidden bg-slate-100">
                                     <img
@@ -291,7 +291,7 @@
                                 </div>
                                 <div class="p-4 space-y-1.5">
                                     <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600">{{ $r->category }}</span>
-                                    <h3 class="text-sm font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">{{ $r->title }}</h3>
+                                    <h3 class="text-sm font-extrabold text-slate-900 group-hover:text-[var(--accent-600)] transition-colors line-clamp-1">{{ $r->title }}</h3>
                                     <p class="text-xs text-slate-500 line-clamp-2">{{ $r->description }}</p>
                                 </div>
                             </a>

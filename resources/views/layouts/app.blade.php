@@ -24,6 +24,31 @@
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/public.js'])
+
+    {{--
+        Preset warna aksen — Iterasi 19 (Fase 4). Nilai --accent-* di-set
+        LEWAT INLINE <style> SERVER-RENDERED di sini (bukan lewat JS
+        runtime) supaya tidak ada flash-of-wrong-color saat halaman
+        pertama kali dimuat. $accentPreset dibagikan ke SEMUA view lewat
+        App\Http\Middleware\HandleAppearancePreview (preview-aware: draft
+        utk admin+preview aktif, live utk visitor biasa) — lihat
+        App\Support\AccentPreset utk daftar 4 preset & nilai hex-nya.
+        Diletakkan SETELAH @vite supaya urutan cascade CSS memenangkan nilai
+        preset aktif di sini dibanding default statis di resources/css/app
+        .css (keduanya sama-sama men-target :root, jadi yang terakhir di
+        <head> yang menang).
+    --}}
+    @php $accentVars = \App\Support\AccentPreset::get($accentPreset ?? \App\Support\AccentPreset::DEFAULT); @endphp
+    <style>
+        :root {
+            --accent-50: {{ $accentVars['50'] }};
+            --accent-100: {{ $accentVars['100'] }};
+            --accent-300: {{ $accentVars['300'] }};
+            --accent-500: {{ $accentVars['500'] }};
+            --accent-600: {{ $accentVars['600'] }};
+            --accent-700: {{ $accentVars['700'] }};
+        }
+    </style>
 </head>
 <body
     x-data="appRoot()"

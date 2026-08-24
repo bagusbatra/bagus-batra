@@ -23,8 +23,8 @@
                 {{-- Main Headline --}}
                 <div data-reveal class="space-y-3">
                     <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.15] sm:leading-[1.12]">
-                        <span x-show="$store.lang.current === 'id'">Merancang Web <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-500">Cepat, Elegan</span> &amp; Intuitif.</span>
-                        <span x-show="$store.lang.current === 'en'" x-cloak>Engineering <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-500">Fast, Elegant</span> &amp; Scalable Web Apps.</span>
+                        <span x-show="$store.lang.current === 'id'">Merancang Web <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-600)] via-blue-600 to-[var(--accent-500)]">Cepat, Elegan</span> &amp; Intuitif.</span>
+                        <span x-show="$store.lang.current === 'en'" x-cloak>Engineering <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-600)] via-blue-600 to-[var(--accent-500)]">Fast, Elegant</span> &amp; Scalable Web Apps.</span>
                     </h1>
                     <p class="text-base sm:text-lg lg:text-xl text-slate-600 font-normal leading-relaxed max-w-2xl">
                         <span x-show="$store.lang.current === 'id'">{{ $personalInfo['tagline_id'] }}</span>
@@ -51,7 +51,7 @@
 
                 {{-- CTA Buttons --}}
                 <div data-reveal class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 pt-2">
-                    <button id="hero-explore-projects-btn" @click="scrollTo('projects')" class="group flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white font-bold text-sm shadow-md hover:shadow-indigo-500/25 transition-all duration-300 cursor-pointer hover:scale-103 hover:-translate-y-0.5 active:scale-97">
+                    <button id="hero-explore-projects-btn" @click="scrollTo('projects')" class="group flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-[var(--accent-600)] text-white font-bold text-sm shadow-md hover:shadow-[var(--accent-500)]/25 transition-all duration-300 cursor-pointer hover:scale-103 hover:-translate-y-0.5 active:scale-97">
                         <span x-show="$store.lang.current === 'id'">Jelajahi Showcase Proyek</span>
                         <span x-show="$store.lang.current === 'en'" x-cloak>Explore Featured Projects</span>
                         <x-icon name="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform" />

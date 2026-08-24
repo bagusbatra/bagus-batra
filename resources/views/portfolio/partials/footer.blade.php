@@ -3,14 +3,27 @@
         <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
             {{-- Brand Col --}}
             <div class="md:col-span-5 space-y-4">
+                {{-- Logo — Iterasi 19 (Fase 4), sama mekanisme & fallback dgn portfolio.partials.navbar (lihat komentar di sana). --}}
                 <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-indigo-600/90 backdrop-blur-md flex items-center justify-center text-white shadow-sm shadow-indigo-500/30 border border-indigo-400/30">
-                        <x-icon name="code2" class="w-5 h-5" />
-                    </div>
-                    <div class="font-bold text-white text-lg tracking-tight">
-                        <span>Bagus</span>
-                        <span class="text-indigo-400">.dev</span>
-                    </div>
+                    @if (($logoType ?? 'text') === 'image' && !empty($logoImage))
+                        <img
+                            src="{{ $logoImage }}"
+                            alt="Bagus Batra"
+                            width="140"
+                            height="36"
+                            loading="lazy"
+                            decoding="async"
+                            class="h-9 w-auto max-w-[140px] object-contain"
+                        />
+                    @else
+                        <div class="w-9 h-9 rounded-xl bg-indigo-600/90 backdrop-blur-md flex items-center justify-center text-white shadow-sm shadow-indigo-500/30 border border-indigo-400/30">
+                            <x-icon name="code2" class="w-5 h-5" />
+                        </div>
+                        <div class="font-bold text-white text-lg tracking-tight">
+                            <span>Bagus</span>
+                            <span class="text-indigo-400">.dev</span>
+                        </div>
+                    @endif
                 </div>
                 <p class="text-xs text-slate-400 max-w-sm leading-relaxed">
                     <span x-show="$store.lang.current === 'id'">Senior Web Developer &amp; Technical Writer berfokus pada arsitektur frontend skala enterprise, optimasi performa web, dan antarmuka elegan.</span>

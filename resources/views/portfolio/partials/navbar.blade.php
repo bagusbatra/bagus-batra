@@ -16,20 +16,40 @@
 >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between">
-            {{-- Logo / Brand Name --}}
+            {{--
+                Logo / Brand Name — Iterasi 19 (Fase 4). $logoType/$logoImage
+                dibagikan ke semua view lewat HandleAppearancePreview
+                (preview-aware, draft/publish sama seperti accent preset).
+                Fallback ke logo teks TIDAK PERNAH kosong: hanya render
+                <img> kalau logo_type='image' DAN logo_image benar-benar
+                terisi (mis. admin pilih "Logo Gambar" tapi belum upload
+                file apapun -> tetap logo teks).
+            --}}
             <button id="brand-logo-btn" @click="scrollTo('hero')" class="flex items-center gap-2.5 group text-left cursor-pointer focus:outline-none">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white shadow-sm shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-                    <x-icon name="code2" class="w-5 h-5" />
-                </div>
-                <div>
-                    <div class="flex items-center gap-1.5 font-bold text-slate-900 text-lg tracking-tight group-hover:text-indigo-600 transition-colors">
-                        <span>Bagus</span>
-                        <span class="text-indigo-600">.dev</span>
+                @if (($logoType ?? 'text') === 'image' && !empty($logoImage))
+                    <img
+                        src="{{ $logoImage }}"
+                        alt="Bagus Batra"
+                        width="160"
+                        height="40"
+                        loading="eager"
+                        decoding="async"
+                        class="h-9 sm:h-10 w-auto max-w-[160px] object-contain group-hover:scale-105 transition-transform duration-200"
+                    />
+                @else
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white shadow-sm shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
+                        <x-icon name="code2" class="w-5 h-5" />
                     </div>
-                    <p class="text-[11px] text-slate-700 hidden sm:block font-medium">
-                        Web Developer &amp; Architect
-                    </p>
-                </div>
+                    <div>
+                        <div class="flex items-center gap-1.5 font-bold text-slate-900 text-lg tracking-tight group-hover:text-indigo-600 transition-colors">
+                            <span>Bagus</span>
+                            <span class="text-indigo-600">.dev</span>
+                        </div>
+                        <p class="text-[11px] text-slate-700 hidden sm:block font-medium">
+                            Web Developer &amp; Architect
+                        </p>
+                    </div>
+                @endif
             </button>
 
             {{-- Desktop Nav Links --}}
@@ -39,7 +59,7 @@
                         id="nav-link-{{ $link['id'] }}"
                         @click="scrollTo('{{ $link['id'] }}')"
                         class="relative px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors duration-200 cursor-pointer"
-                        :class="activeSection === '{{ $link['id'] }}' ? 'text-indigo-600 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'"
+                        :class="activeSection === '{{ $link['id'] }}' ? 'text-[var(--accent-600)] font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'"
                     >
                         <span
                             x-show="activeSection === '{{ $link['id'] }}'"
@@ -69,7 +89,7 @@
                     <span>CV</span>
                 </button>
 
-                <button id="nav-hire-me-btn" @click="scrollTo('contact')" class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-indigo-600 rounded-lg transition-all duration-200 shadow-xs hover:shadow-indigo-500/20 cursor-pointer hover:scale-105 active:scale-95">
+                <button id="nav-hire-me-btn" @click="scrollTo('contact')" class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-[var(--accent-600)] rounded-lg transition-all duration-200 shadow-xs hover:shadow-[var(--accent-500)]/20 cursor-pointer hover:scale-105 active:scale-95">
                     <x-icon name="sparkles" class="w-3.5 h-3.5 text-indigo-300" />
                     <span x-show="$store.lang.current === 'id'">Rekrut Saya</span>
                     <span x-show="$store.lang.current === 'en'" x-cloak>Hire Me</span>
@@ -109,11 +129,11 @@
                     id="mobile-link-{{ $link['id'] }}"
                     @click="scrollTo('{{ $link['id'] }}')"
                     class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer"
-                    :class="activeSection === '{{ $link['id'] }}' ? 'bg-white text-indigo-600 font-bold border border-indigo-100 shadow-2xs' : 'text-slate-700 hover:bg-white/60'"
+                    :class="activeSection === '{{ $link['id'] }}' ? 'bg-white text-[var(--accent-600)] font-bold border border-[var(--accent-100)] shadow-2xs' : 'text-slate-700 hover:bg-white/60'"
                 >
                     <span x-show="$store.lang.current === 'id'">{{ $link['id_label'] }}</span>
                     <span x-show="$store.lang.current === 'en'" x-cloak>{{ $link['en_label'] }}</span>
-                    <span x-show="activeSection === '{{ $link['id'] }}'" class="w-2 h-2 rounded-full bg-indigo-600 shadow-xs shadow-indigo-500/50"></span>
+                    <span x-show="activeSection === '{{ $link['id'] }}'" class="w-2 h-2 rounded-full bg-[var(--accent-600)] shadow-xs shadow-[var(--accent-500)]/50"></span>
                 </button>
             @endforeach
         </div>
@@ -124,7 +144,7 @@
                 <span x-show="$store.lang.current === 'id'">Unduh Resume / CV (PDF)</span>
                 <span x-show="$store.lang.current === 'en'" x-cloak>Download CV (PDF)</span>
             </button>
-            <button id="mobile-contact-cta-btn" @click="scrollTo('contact')" class="w-full flex items-center justify-center gap-2 py-3 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 cursor-pointer">
+            <button id="mobile-contact-cta-btn" @click="scrollTo('contact')" class="w-full flex items-center justify-center gap-2 py-3 text-sm font-bold text-white bg-[var(--accent-600)] hover:bg-[var(--accent-700)] rounded-xl shadow-md shadow-[var(--accent-600)]/20 cursor-pointer">
                 <x-icon name="sparkles" class="w-4 h-4 text-indigo-200" />
                 <span x-show="$store.lang.current === 'id'">Mulai Diskusi Proyek</span>
                 <span x-show="$store.lang.current === 'en'" x-cloak>Start Project Discussion</span>

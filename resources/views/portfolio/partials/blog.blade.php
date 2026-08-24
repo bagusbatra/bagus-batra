@@ -13,7 +13,7 @@
         {{-- Header Strip --}}
         <div data-reveal class="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div class="max-w-2xl space-y-3">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-indigo-50/80 backdrop-blur-md text-indigo-700 border border-indigo-100 text-xs font-bold uppercase tracking-wider">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[var(--accent-50)]/80 backdrop-blur-md text-[var(--accent-700)] border border-[var(--accent-100)] text-xs font-bold uppercase tracking-wider">
                     <x-icon name="book-open" class="w-3.5 h-3.5" />
                     <span x-show="$store.lang.current === 'id'">Blog &amp; Tulisan Teknis</span>
                     <span x-show="$store.lang.current === 'en'" x-cloak>Engineering Blog &amp; Insights</span>

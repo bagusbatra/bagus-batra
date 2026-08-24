@@ -58,6 +58,7 @@ $paths = [
     'quote' => '<path d="M9 7H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v3l-3 2h5V9a2 2 0 0 0-2-2z"/><path d="M19 7h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v3l-3 2h5V9a2 2 0 0 0-2-2z"/>',
     'user' => '<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/>',
     'log-out' => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+    'image' => '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>',
 ];
 
 $inner = $paths[$name] ?? '<circle cx="12" cy="12" r="9"/>';

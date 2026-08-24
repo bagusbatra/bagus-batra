@@ -49,6 +49,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // keputusan di docs/LOG-ITERASI.md).
         Route::get('appearance', [AppearanceController::class, 'index'])->name('appearance');
         Route::put('appearance/animations', [AppearanceController::class, 'updateAnimations'])->name('appearance.animations.update');
+        Route::put('appearance/branding', [AppearanceController::class, 'updateBranding'])->name('appearance.branding.update');
         Route::post('appearance/publish', [AppearanceController::class, 'publish'])->name('appearance.publish');
         Route::post('appearance/discard', [AppearanceController::class, 'discardDraft'])->name('appearance.discard');
 

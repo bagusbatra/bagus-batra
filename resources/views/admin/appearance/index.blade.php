@@ -108,15 +108,69 @@
             </p>
         </div>
 
-        {{-- Tab: Tema & Branding (placeholder — Iterasi 19) --}}
-        <div x-show="tab === 'branding'" x-cloak data-reveal class="flex flex-col items-center justify-center text-center py-16 bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs space-y-3">
-            <div class="w-12 h-12 rounded-2xl bg-indigo-50/80 text-indigo-600 flex items-center justify-center border border-indigo-100/60">
-                <x-icon name="palette" class="w-6 h-6" />
-            </div>
-            <div class="space-y-1">
-                <h3 class="text-base font-extrabold text-slate-900">Tema &amp; Branding — Segera Hadir</h3>
-                <p class="text-sm text-slate-500 max-w-md mx-auto">Preset warna aksen (4 pilihan) dan logo/branding direncanakan Iterasi 19.</p>
-            </div>
+        {{-- Tab: Tema & Branding — FUNGSIONAL (Iterasi 19) --}}
+        <div x-show="tab === 'branding'" x-cloak data-reveal class="space-y-4">
+            {{-- Preset Warna Aksen --}}
+            <form method="POST" action="{{ route('admin.appearance.branding.update') }}" enctype="multipart/form-data" x-data="{ logoType: '{{ $logoType }}' }" class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-6 space-y-5">
+                @csrf
+                @method('PUT')
+
+                <div>
+                    <h3 class="text-sm font-extrabold text-slate-900">Preset Warna Aksen</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Diterapkan ke elemen brand-accent saja (tombol CTA utama, pill nav aktif, badge label section, gradient judul Hero, border hover card, tombol filter aktif) — bukan warna netral (teks/latar/border slate).</p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    @foreach ($accentPresets as $key => $preset)
+                        <label class="relative flex flex-col items-center gap-2 p-4 rounded-2xl border cursor-pointer transition-colors {{ $accentPreset === $key ? 'border-slate-900 bg-slate-50' : 'border-slate-200/70 hover:bg-slate-50/60' }}">
+                            <input type="radio" name="accent_preset" value="{{ $key }}" class="sr-only peer" {{ $accentPreset === $key ? 'checked' : '' }}>
+                            <span class="w-9 h-9 rounded-full border-2 border-white shadow-md" style="background-color: {{ $preset['swatch'] }};"></span>
+                            <span class="text-xs font-bold text-slate-700">{{ $preset['label'] }}</span>
+                            @if ($accentPreset === $key)
+                                <span class="absolute top-2 right-2 w-4 h-4 rounded-full bg-slate-900 text-white flex items-center justify-center">
+                                    <x-icon name="check" class="w-2.5 h-2.5" />
+                                </span>
+                            @endif
+                        </label>
+                    @endforeach
+                </div>
+
+                <div class="border-t border-slate-200/70 pt-5 space-y-4">
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-900">Logo &amp; Branding</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Pilih logo teks (default, "Bagus.dev") atau upload gambar logo sendiri. Kalau tipe gambar dipilih tapi belum ada file yang diunggah, situs tetap fallback ke logo teks (tidak pernah kosong).</p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3">
+                        <label class="flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer text-xs font-bold transition-colors" :class="logoType === 'text' ? 'border-slate-900 bg-slate-50 text-slate-900' : 'border-slate-200/70 text-slate-600 hover:bg-slate-50/60'">
+                            <input type="radio" name="logo_type" value="text" x-model="logoType" class="sr-only">
+                            <x-icon name="code2" class="w-3.5 h-3.5" />
+                            Logo Teks
+                        </label>
+                        <label class="flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer text-xs font-bold transition-colors" :class="logoType === 'image' ? 'border-slate-900 bg-slate-50 text-slate-900' : 'border-slate-200/70 text-slate-600 hover:bg-slate-50/60'">
+                            <input type="radio" name="logo_type" value="image" x-model="logoType" class="sr-only">
+                            <x-icon name="image" class="w-3.5 h-3.5" />
+                            Logo Gambar
+                        </label>
+                    </div>
+
+                    <div x-show="logoType === 'image'" x-cloak class="p-4 rounded-2xl border border-slate-200/70 bg-slate-50/60 space-y-3">
+                        @if ($logoImage)
+                            <div class="flex items-center gap-3">
+                                <img src="{{ $logoImage }}" alt="Logo saat ini" width="40" height="40" loading="lazy" class="h-10 w-auto object-contain bg-white rounded-lg border border-slate-200 p-1.5" />
+                                <span class="text-[11px] text-slate-500">Logo saat ini (draft/live). Upload file baru di bawah untuk menggantinya.</span>
+                            </div>
+                        @endif
+                        <input type="file" name="logo_image_file" accept="image/*" class="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-indigo-600 file:cursor-pointer cursor-pointer" />
+                        @error('logo_image_file') <p class="text-[11px] text-rose-600 font-semibold">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-colors">
+                    <x-icon name="check" class="w-3.5 h-3.5" />
+                    Simpan sebagai Draft
+                </button>
+            </form>
         </div>
 
         {{-- Tab: Animasi & Efek — FUNGSIONAL (bukti konsep Iterasi 18) --}}
