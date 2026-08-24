@@ -74,7 +74,7 @@ Alpine.data('appRoot', () => ({
     scrollProgress: 0,
     showFloatingWidget: false,
     mobileMenuOpen: false,
-    sectionIds: ['hero', 'about', 'skills', 'projects', 'playground', 'experience', 'blog', 'testimonials', 'contact'],
+    sectionIds: ['hero', 'about', 'skills', 'projects', 'experience', 'blog', 'testimonials', 'contact'],
 
     init() {
         this.onScroll();
@@ -279,107 +279,6 @@ Alpine.data('articleModal', () => ({
             this.copiedLink = true;
             setTimeout(() => (this.copiedLink = false), 2000);
         }
-    },
-}));
-
-/* ------------------------------------------------------------------ *
- * Interactive UI Lab (playground) — spring feel, design tokens,
- * optimistic UI simulation.
- * ------------------------------------------------------------------ */
-Alpine.data('playground', () => ({
-    tab: 'spring',
-
-    // Spring demo
-    stiffness: 300,
-    damping: 20,
-    scaleFactor: 1.1,
-    clickCount: 0,
-    hovered: false,
-    pressed: false,
-
-    // Theme tokens demo
-    accent: 'indigo',
-    radius: 16,
-    glass: true,
-
-    // Optimistic UI demo
-    latency: 600,
-    todos: [
-        { id: 1, text: 'Optimasi Web Vitals LCP < 1.2s', completed: true },
-        { id: 2, text: 'Migrasi ke React 19 Server Actions', completed: false },
-        { id: 3, text: 'Setup Vitest automated coverage', completed: false },
-    ],
-    newTodoText: '',
-    isSimulating: false,
-
-    copiedCode: false,
-
-    resetSpring() {
-        this.stiffness = 300;
-        this.damping = 20;
-        this.scaleFactor = 1.1;
-    },
-
-    springStyle() {
-        const duration = Math.max(120, 760 - this.stiffness * 1.4);
-        const bounce = Math.min(0.9, Math.max(0.1, this.damping / 40));
-        const scale = this.pressed ? 0.95 : this.hovered ? this.scaleFactor : 1;
-        return `transform: scale(${scale}); transition: transform ${duration}ms cubic-bezier(0.34, ${bounce}, 0.64, 1);`;
-    },
-
-    triggerClick() {
-        this.clickCount += 1;
-        this.pressed = true;
-        setTimeout(() => (this.pressed = false), 160);
-    },
-
-    accentClasses() {
-        const map = {
-            indigo: { bg: 'bg-indigo-600', text: 'text-indigo-600', lightBg: 'bg-indigo-50' },
-            emerald: { bg: 'bg-emerald-600', text: 'text-emerald-600', lightBg: 'bg-emerald-50' },
-            rose: { bg: 'bg-rose-600', text: 'text-rose-600', lightBg: 'bg-rose-50' },
-            amber: { bg: 'bg-amber-600', text: 'text-amber-600', lightBg: 'bg-amber-50' },
-            cyan: { bg: 'bg-cyan-600', text: 'text-cyan-600', lightBg: 'bg-cyan-50' },
-        };
-        return map[this.accent] || map.indigo;
-    },
-
-    addOptimisticTodo() {
-        if (!this.newTodoText.trim()) return;
-        const tempId = Date.now();
-        this.todos.push({ id: tempId, text: this.newTodoText.trim(), completed: false, isOptimistic: true });
-        this.newTodoText = '';
-        this.isSimulating = true;
-        setTimeout(() => {
-            const t = this.todos.find((x) => x.id === tempId);
-            if (t) t.isOptimistic = false;
-            this.isSimulating = false;
-        }, this.latency);
-    },
-
-    toggleTodo(id) {
-        const t = this.todos.find((x) => x.id === id);
-        if (t) t.completed = !t.completed;
-    },
-
-    snippetLabel() {
-        if (this.tab === 'spring') return `transition: { type: 'spring', stiffness: ${this.stiffness}, damping: ${this.damping} }`;
-        if (this.tab === 'theme') return `className: "rounded-[${this.radius}px] ${this.accentClasses().bg}"`;
-        return `setTodos(prev => [...prev, optimisticItem])`;
-    },
-
-    copySnippet() {
-        let code;
-        if (this.tab === 'spring') {
-            code = `transition={{ type: 'spring', stiffness: ${this.stiffness}, damping: ${this.damping} }}`;
-        } else if (this.tab === 'theme') {
-            code = `className="rounded-[${this.radius}px] ${this.accentClasses().bg}"`;
-        } else {
-            code = `setTodos(prev => [...prev, optimisticItem]);`;
-        }
-        navigator.clipboard.writeText(code);
-        this.copiedCode = true;
-        setTimeout(() => (this.copiedCode = false), 2000);
     },
 }));
 

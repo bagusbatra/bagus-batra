@@ -35,7 +35,6 @@
                 <div class="space-y-2.5">
                     <div class="font-bold text-slate-200 uppercase tracking-wider text-[11px]">Eksplorasi</div>
                     <ul class="space-y-2">
-                        <li><a href="#playground" class="hover:text-indigo-400 transition-colors">Interactive UI Lab</a></li>
                         <li><a href="#experience" class="hover:text-indigo-400 transition-colors">Pengalaman</a></li>
                         <li><a href="#blog" class="hover:text-indigo-400 transition-colors">Artikel &amp; Blog</a></li>
                         <li><a href="#contact" class="hover:text-indigo-400 transition-colors">Kontak &amp; Brief</a></li>

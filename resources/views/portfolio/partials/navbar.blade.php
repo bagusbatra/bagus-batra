@@ -2,9 +2,7 @@
     $navLinks = [
         ['id' => 'hero', 'id_label' => 'Beranda', 'en_label' => 'Home'],
         ['id' => 'about', 'id_label' => 'Tentang', 'en_label' => 'About'],
-        ['id' => 'skills', 'id_label' => 'Keahlian', 'en_label' => 'Skills'],
         ['id' => 'projects', 'id_label' => 'Proyek', 'en_label' => 'Projects'],
-        ['id' => 'playground', 'id_label' => 'UI Lab', 'en_label' => 'UI Lab'],
         ['id' => 'experience', 'id_label' => 'Pengalaman', 'en_label' => 'Experience'],
         ['id' => 'blog', 'id_label' => 'Artikel Blog', 'en_label' => 'Blog'],
         ['id' => 'contact', 'id_label' => 'Kontak', 'en_label' => 'Contact'],

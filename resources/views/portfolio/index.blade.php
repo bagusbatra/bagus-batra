@@ -20,9 +20,6 @@
     @if ($sectionActive['projects'] ?? true)
         @include('portfolio.partials.projects')
     @endif
-    @if ($sectionActive['playground'] ?? true)
-        @include('portfolio.partials.playground')
-    @endif
     @if ($sectionActive['experience'] ?? true)
         @include('portfolio.partials.experience')
     @endif
