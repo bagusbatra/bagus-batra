@@ -470,15 +470,62 @@
             </form>
         </div>
 
-        {{-- Tab: Mode Situs (placeholder — Iterasi 22) --}}
-        <div x-show="tab === 'mode'" x-cloak data-reveal class="flex flex-col items-center justify-center text-center py-16 bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs space-y-3">
-            <div class="w-12 h-12 rounded-2xl bg-indigo-50/80 text-indigo-600 flex items-center justify-center border border-indigo-100/60">
-                <x-icon name="server" class="w-6 h-6" />
+        {{-- Tab: Mode Situs — FUNGSIONAL (Iterasi 22) --}}
+        <div x-show="tab === 'mode'" x-cloak data-reveal class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-6 space-y-5">
+            <div>
+                <h3 class="text-sm font-extrabold text-slate-900">Mode Situs</h3>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Saat aktif, SEMUA pengunjung yang tidak login melihat halaman "Segera Hadir" di rute publik manapun (<code class="text-[11px] font-mono bg-slate-100 px-1 py-0.5 rounded">/</code>, <code class="text-[11px] font-mono bg-slate-100 px-1 py-0.5 rounded">/projects</code>, dst). Anda (admin yang login) tetap melihat situs normal apa adanya — tidak perlu logout untuk mengeceknya — dan halaman <code class="text-[11px] font-mono bg-slate-100 px-1 py-0.5 rounded">/admin/*</code> tetap selalu bisa diakses supaya Anda bisa mematikannya kembali.
+                </p>
             </div>
-            <div class="space-y-1">
-                <h3 class="text-base font-extrabold text-slate-900">Mode Situs — Segera Hadir</h3>
-                <p class="text-sm text-slate-500 max-w-md mx-auto">Mode maintenance ("Segera Hadir" untuk visitor, admin tetap bisa lihat situs normal) direncanakan Iterasi 22.</p>
-            </div>
+
+            <form method="POST" action="{{ route('admin.appearance.maintenance.update') }}" class="space-y-4">
+                @csrf
+                @method('PUT')
+
+                <div class="flex items-center justify-between gap-4 p-4 rounded-2xl border border-slate-200/70 bg-slate-50/60">
+                    <div class="min-w-0">
+                        <div class="text-sm font-bold text-slate-800">Aktifkan Mode Maintenance</div>
+                        <p class="text-xs text-slate-500 mt-0.5">Karena Anda selalu bypass halaman ini, gunakan "Lihat Halaman Maintenance" di bawah untuk mengecek tampilannya sebelum publish.</p>
+                    </div>
+
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" name="maintenance_mode" value="1" class="peer sr-only" {{ $maintenanceMode ? 'checked' : '' }}>
+                        <div class="w-11 h-6 rounded-full bg-slate-300 peer-checked:bg-rose-600 transition-colors relative">
+                            <div class="w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform"></div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-500">Pesan Custom (ID)</label>
+                        <textarea name="maintenance_message_id" rows="3" maxlength="500" placeholder="Situs sedang dalam pemeliharaan singkat untuk peningkatan. Mohon coba lagi dalam beberapa saat." class="mt-1 w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-indigo-500">{{ $maintenanceMessageId }}</textarea>
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-500">Pesan Custom (EN)</label>
+                        <textarea name="maintenance_message_en" rows="3" maxlength="500" placeholder="The site is undergoing brief maintenance for improvements. Please check back again shortly." class="mt-1 w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-indigo-500">{{ $maintenanceMessageEn }}</textarea>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-400">Kosongkan salah satu/keduanya untuk memakai pesan default di atas sbg placeholder.</p>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-colors">
+                        <x-icon name="check" class="w-3.5 h-3.5" />
+                        Simpan sebagai Draft
+                    </button>
+
+                    <a
+                        href="{{ route('admin.appearance.maintenance.preview') }}"
+                        target="_blank"
+                        rel="noopener"
+                        class="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-colors"
+                    >
+                        <x-icon name="eye" class="w-3.5 h-3.5" />
+                        Lihat Halaman Maintenance
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
 @endsection

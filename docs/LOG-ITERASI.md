@@ -29,6 +29,82 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 22 — Mode Maintenance (selesai: 2026-08-25)
+Status: Selesai — **Fase 4 (Kustomisasi Tampilan Halaman Index), lanjutan Iterasi 18-21.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-KUSTOMISASI-TAMPILAN.md` bagian 5 Iterasi 22. **Kondisi awal sesi**: `git status --short` **BERSIH**, `git log` mengonfirmasi commit terakhir `dcd887a` ("feat: Implement custom headings and subheadings for portfolio sections", Iterasi 21) sudah ter-commit oleh user — tidak disentuh/direvert, pekerjaan sesi ini ditumpuk di atasnya.
+
+**1) Skema — TIDAK ADA migrasi baru.** 3 setting baru (`maintenance_mode` boolean, `maintenance_message_id`/`maintenance_message_en` nullable teks) disimpan di tabel key-value generik `display_settings` (sudah ada sejak Iterasi 18) lewat `DisplaySetting::setDraft()` — baris dibuat otomatis via `updateOrCreate` saat pertama kali diisi, persis pola `animations_enabled`/`navbar_cta_visible` dkk di iterasi-iterasi sebelumnya. `publish()`/`discardDraft()` (generik sejak Iterasi 18) **TIDAK PERLU diubah sama sekali** untuk mendukung 3 key baru ini — bukti lagi desain fondasi Iterasi 18 bekerja seperti direncanakan.
+
+**2) Middleware baru `App\Http\Middleware\CheckMaintenanceMode`** — didaftarkan di `bootstrap/app.php` pada grup middleware "web", DI BAWAH `HandleAppearancePreview` (urutan murni demi keterbacaan kode, bukan kebutuhan fungsional — dijelaskan di docblock). Logika 3 langkah, dicek berurutan:
+   1. **Path `/admin` atau `/admin/*`** — dicek lewat `$request->is(...)` (BUKAN status login), supaya admin yang **belum login** tetap bisa membuka `/admin/login` untuk masuk lalu mematikan maintenance dari sana. Ini satu-satunya cara membuat "`/admin/*` tetap bisa diakses" benar-benar berlaku untuk kasus terburuk (admin lupa mematikan sebelum logout).
+   2. **Guard "web" sedang login** — admin yang sedang login **SELALU** melihat situs publik apa adanya di manapun, terlepas dari status mode preview (`?preview=1`) sekalipun. **Keputusan sadar**: BEDA dengan seluruh setting Fase 4 lain (yang butuh preview aktif dulu baru admin melihat draft), mode maintenance TIDAK punya "preview render" untuk admin sama sekali — tujuannya justru supaya admin BISA mengecek situs publik TANPA logout selagi maintenance menyala untuk visitor lain, bukan supaya admin ikut melihat halaman maintenance-nya. Konsekuensi: admin tidak akan pernah melihat halaman "Segera Hadir" lewat rute publik manapun (lihat poin 4 soal rute preview terpisah utk kebutuhan ini).
+   3. Baru setelah 2 bypass di atas gagal (artinya request **pasti** dari pengunjung yang tidak login), baca `DisplaySetting::getBool('maintenance_mode', false, false)` — **preview di-hardcode `false`** (bukan membaca request attribute `appearance_preview` dari `HandleAppearancePreview`), didokumentasikan eksplisit di docblock: baris ini hanya pernah tereksekusi utk visitor yang tidak login, dan `HandleAppearancePreview` sendiri menjamin visitor seperti itu tidak akan pernah punya preview aktif apa pun isi query string/session-nya — jadi hasilnya identik, tapi eksplisit `false` di sini menghindari ketergantungan implisit ke urutan middleware/nama attribute yang bisa berubah di masa depan.
+   4. Kalau menyala: `response()->view('maintenance', ..., 503)` — status HTTP **503 Service Unavailable** (bukan 200), standar semantik HTTP utk halaman maintenance (dicek eksplisit di verifikasi, bukan asumsi).
+
+**3) View publik baru `resources/views/maintenance.blade.php` — HALAMAN MANDIRI, TIDAK `@extends('layouts.app')`.** Keputusan sadar: layout utama membawa navbar+footer+CTA+widget mengambang yang semuanya tidak relevan (bahkan kontraproduktif — tombol navigasi ke section yang sengaja tidak dirender) untuk halaman "situs sedang tidak bisa diakses". View ini membangun `<html>` sendiri dari nol tapi **reuse penuh** elemen visual identitas situs supaya tetap terasa sebagai bagian dari brand yang sama, bukan halaman generik:
+   - Font Google Fonts sama (Outfit/Plus Jakarta Sans/Fira Code), `@vite(['resources/css/app.css', 'resources/js/public.js'])` sama (dapat Alpine + `Alpine.store('lang')` gratis dari bundle publik yang sudah ada, TIDAK ada JS baru ditulis).
+   - Inline `<style>` preset warna aksen — **cuplikan PERSIS** dari `layouts/app.blade.php` (Iterasi 19) — accent-aware karena `$accentPreset` dibagikan `HandleAppearancePreview` lewat `view()->share()` yang berlaku SEMUA view di pipeline request yang sama, TERMASUK view ini yang dirender langsung dari middleware (bukan dari route/controller biasa) — dikonfirmasi bekerja saat verifikasi (lihat tabel di bawah).
+   - Ambient blob background (3 lapis blur gradient) — cuplikan PERSIS dari layout.
+   - Tombol toggle bahasa (`#maintenance-lang-toggle-btn`) — pola visual & `@click="$store.lang.toggle()"` PERSIS sama dgn `#lang-toggle-btn` navbar, supaya interaksi terasa konsisten meski di halaman mandiri.
+   - Kartu frosted-glass tengah: ikon (lihat poin 5), heading bilingual "Segera Hadir"/"Coming Right Back" (HARDCODED, bukan custom — cuma judul generik, admin cuma bisa custom pesan di bawahnya), pesan bilingual custom dgn fallback default kalau kosong (`$messageId ?: 'default ID...'`, sama pola `?:` yang dipakai heading Iterasi 21), footer copyright kecil.
+   - `<meta name="robots" content="noindex, nofollow">` — halaman ini bukan konten permanen, sengaja dikecualikan dari indexing search engine (bukan bagian scope literal tugas, tapi praktik standar utk halaman maintenance yang wajar ditambahkan tanpa menyimpang dari tujuan Iterasi 22).
+
+**4) Ikon baru `wrench`** ditambahkan ke `resources/views/components/icon.blade.php` (dipakai halaman maintenance & tab admin "Mode Situs").
+
+**5) Form admin "Mode Situs"** (`resources/views/admin/appearance/index.blade.php`, tab `mode` — placeholder "Segera Hadir" sejak Iterasi 18 sekarang fungsional): 1 toggle switch (`maintenance_mode`, warna rose bukan indigo — sengaja beda dari toggle lain supaya terasa "berbahaya/perlu hati-hati", konsisten konvensi warna aksi destruktif di admin ini mis. tombol hapus) + 2 textarea pesan custom ID/EN (placeholder menunjukkan teks default hardcoded). Submit `PUT /admin/appearance/maintenance` → `AppearanceController@updateMaintenance()` (route & controller baru) — pengguna KELIMA dari alur draft generik Iterasi 18, pola sama persis `updateElements()`: `DisplaySetting::setDraft()` x3, field pesan kosong disimpan sbg `null` eksplisit (sama pola `updateHeadings()` Iterasi 21).
+
+**6) Tambahan di luar rincian rencana literal, TAPI dibutuhkan supaya fitur ini benar2 bisa diverifikasi admin sendiri**: rute BARU `GET /admin/appearance/maintenance/preview` → `AppearanceController@previewMaintenance()` — me-render `maintenance.blade.php` apa adanya dgn nilai **DRAFT** (`preview=true`) pesan custom, TANPA melalui `CheckMaintenanceMode` sama sekali (rute admin biasa, dilindungi middleware `auth` seperti rute admin lain). **Alasan penambahan**: karena keputusan poin 2.2 di atas membuat admin **TIDAK PERNAH** bisa melihat halaman maintenance lewat rute publik manapun (mereka selalu bypass), tanpa rute ini admin tidak punya cara sama sekali mengecek tampilan pesan custom mereka sebelum publish — akan bertentangan dgn semangat "Buka Preview" yang jadi pola inti Fase 4 sejak Iterasi 18. Tombol "Lihat Halaman Maintenance" (`target="_blank"`) ditambahkan di form tab "Mode Situs" mengarah ke rute ini.
+
+### File/area utama yang berubah
+- **Middleware baru**: `app/Http/Middleware/CheckMaintenanceMode.php`.
+- **Middleware terdaftar**: `bootstrap/app.php` — `CheckMaintenanceMode` ditambahkan ke grup `web` (append), setelah `HandleAppearancePreview`.
+- **View publik baru**: `resources/views/maintenance.blade.php` (halaman "Segera Hadir", mandiri — lihat Ringkasan poin 3).
+- **Controller diubah**: `app/Http/Controllers/Admin/AppearanceController.php` — `index()` tambah `$maintenanceMode`/`$maintenanceMessageId`/`$maintenanceMessageEn` (preview=true), method baru `updateMaintenance()` & `previewMaintenance()`.
+- **Route baru**: `routes/admin.php` — `PUT admin/appearance/maintenance` (`admin.appearance.maintenance.update`), `GET admin/appearance/maintenance/preview` (`admin.appearance.maintenance.preview`).
+- **View diubah**: `resources/views/admin/appearance/index.blade.php` (tab "Mode Situs" placeholder → fungsional), `resources/views/components/icon.blade.php` (ikon baru `wrench`).
+- **Model**: TIDAK ada perubahan (`DisplaySetting`/`publishAll()`/`discardAllDrafts()` Iterasi 18 sudah generik, tidak perlu di-extend).
+- **Skema DB**: TIDAK ada perubahan (`display_settings` generik sudah cukup) — `docs/ERD.md` TIDAK diupdate di iterasi ini.
+- **Asset**: `npm run build` dijalankan ulang (kelas Tailwind arbitrary-value baru di `maintenance.blade.php`, mis. `bg-[var(--accent-50)]`, perlu masuk `public/build` — gitignored, tidak masuk `git status`).
+
+### Migrasi & seeder dijalankan
+- Tidak ada — 3 setting baru disimpan di tabel `display_settings` generik yang sudah ada sejak Iterasi 18 (baris dibuat otomatis via `updateOrCreate` saat pertama kali diisi dari form admin).
+
+### Verifikasi
+**Via `php artisan serve --port=8220` + `curl` sungguhan (cookie jar login admin, kredensial default `admin@bagusbatra.dev`/`Admin#12345`), `storage/logs/laravel.log` dikosongkan sebelum sesi, `wc -l` dicek di beberapa titik → konsisten 0 baris sepanjang sesi.**
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | Baseline: `GET /` & `GET /projects` sebelum apa pun disentuh | **LOLOS** — keduanya 200 |
+| 2 | `GET /admin/appearance/maintenance/preview` (admin, sebelum draft apa pun) | **LOLOS** — 200, render halaman maintenance dgn pesan default (placeholder ID/EN) |
+| 3 | Draft `maintenance_mode=1` + pesan custom ID/EN (`PUT /admin/appearance/maintenance`) | **LOLOS** — DB: `value=NULL, value_draft='1'` (baris baru via `updateOrCreate`), 2 baris pesan baru juga tercipta dgn `value_draft` terisi |
+| 4 | `GET /` & `GET /projects` TANPA cookie (visitor) setelah draft #3 | **LOLOS** — keduanya TETAP 200 (situs normal, draft tidak bocor) |
+| 5 | `GET /` DENGAN cookie admin setelah draft #3 (belum publish) | **LOLOS** — 200 (situs normal — draft belum live, DAN admin bypass sekalipun sudah live) |
+| 6 | `POST /admin/appearance/publish` | **LOLOS** — DB: `maintenance_mode.value='1', value_draft=NULL` |
+| 7 | `GET /`, `GET /projects`, `GET /projects/lumina-saas` TANPA cookie setelah publish #6 | **LOLOS** — **ketiganya 503**, body mengandung "Segera Hadir"/"Coming Right Back" (1x) & kedua pesan custom (1x masing-masing ID/EN, keduanya dirender sekaligus lewat `x-show`, disembunyikan salah satu via Alpine client-side) |
+| 8 | `GET /` DENGAN cookie admin setelah publish #6 (maintenance sudah LIVE) | **LOLOS** — tetap 200, 0 kemunculan teks "Segera Hadir" (admin bypass terbukti benar meski maintenance live sungguhan, bukan cuma draft) |
+| 9 | `GET /admin/login` TANPA cookie (simulasi admin belum/sudah logout) selama maintenance live | **LOLOS** — 200 (halaman login tetap bisa diakses via pengecualian PATH, bukan status login) |
+| 10 | `GET /admin/dashboard` DENGAN cookie admin selama maintenance live | **LOLOS** — 200 (seluruh `/admin/*` tetap berfungsi normal) |
+| 11 | Matikan: draft `maintenance_mode=0` → publish | **LOLOS** — DB `value='0', value_draft=NULL` |
+| 12 | `GET /` & `GET /projects` TANPA cookie setelah #11 | **LOLOS** — kembali 200 (situs publik pulih) |
+| 13 | **Regresi byte-per-byte**: `GET /` (minus token CSRF) SEBELUM sesi ini dimulai (via `git stash`) dibandingkan SESUDAH seluruh perubahan Iterasi 22 (`git stash pop`, server yang sama, tanpa restart) | **LOLOS — IDENTIK** (`diff` exit code 0) — mengonfirmasi tidak ada perubahan tak sengaja ke halaman index dari penambahan middleware/view/tab baru ini |
+
+**Housekeeping akhir sesi**: 2 baris pesan custom (`maintenance_message_id`/`_en`) sempat menyisakan teks uji ("Kami lagi upgrade sebentar...") di kolom `value` (live) setelah skenario #11 — BUKAN bug, melainkan konsekuensi `setDraft(null)` yang idempoten (tidak menandai baris "dirty" kalau `value_draft` memang sudah `NULL` sebelumnya, jadi `publish()` yang hanya memproses baris `value_draft NOT NULL` melewatinya) — persis pola "no-op write" yang sudah didokumentasikan utk `display_count`/heading di Iterasi 20-21, HANYA di sini arahnya terbalik (no-op saat MENGOSONGKAN, bukan saat mengisi). Dibersihkan manual via tinker (`update(['value' => null, 'value_draft' => null])`) di akhir sesi supaya baseline DB benar2 pristine — sama persis pola pembersihan artefak uji yang didokumentasikan di catatan Iterasi 19 poin 12. Server dimatikan di akhir (`taskkill` PID, dikonfirmasi request berikutnya `000`/connection refused).
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user.
+
+### Catatan untuk review
+- **Admin TIDAK PERNAH melihat halaman maintenance lewat rute publik manapun, bahkan dalam mode preview** — ini keputusan SADAR (lihat Ringkasan poin 2.2), bukan celah. Kalau nanti admin butuh melihatnya "seolah-olah visitor" (mis. untuk screenshot dokumentasi), gunakan rute baru `GET /admin/appearance/maintenance/preview` (Ringkasan poin 6) — bukan logout lalu buka `/` (walau itu juga tetap valid sbg cara manual).
+- **Halaman maintenance status HTTP 503**, bukan 200 — dicek eksplisit di verifikasi #7. Ini penting utk SEO/uptime-monitoring pihak ketiga (kalau pernah dipasang di masa depan) supaya tidak dianggap "halaman baru yang sengaja menggantikan konten lama" oleh crawler, melainkan "situs sementara tidak tersedia".
+- **Heading "Segera Hadir"/"Coming Right Back" di halaman maintenance HARDCODED, bukan bagian dari custom text admin** — hanya PESAN di bawahnya yang bisa di-custom (`maintenance_message_id`/`_en`). Konsisten dgn scope literal rencana ("pesan custom (opsional)"), bukan "judul custom".
+- **`CheckMaintenanceMode` TIDAK bergantung pada request attribute `appearance_preview` dari `HandleAppearancePreview`** meski didaftarkan setelahnya — dijelaskan di docblock kedua file. Kalau di masa depan urutan middleware ini perlu ditukar (mis. alasan performa lain), tidak akan mengubah perilaku mode maintenance sama sekali.
+- **No-op write saat mengosongkan pesan custom yang draft-nya sudah NULL** (lihat "Housekeeping akhir sesi" di atas) — TIDAK diperbaiki di level kode (mis. dgn selalu memaksa `value_draft` "dirty" walau nilainya sama) karena dampaknya murni kosmetik (nilai lama di `value` tidak pernah terlihat visitor kecuali `maintenance_mode` dinyalakan lagi, dan begitu dinyalakan, admin akan mengisi ulang pesan lewat form yang sama) — sama keputusan yg diambil utk isu serupa di Iterasi 20 (drift `sort_order`).
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai instruksi user (commit manual).
+
+---
+
 ## Iterasi 21 — Toggle Sub-Elemen & Custom Heading/Subheading (selesai: 2026-08-24)
 Status: Selesai — **Fase 4 (Kustomisasi Tampilan Halaman Index), lanjutan Iterasi 18-20.**
 

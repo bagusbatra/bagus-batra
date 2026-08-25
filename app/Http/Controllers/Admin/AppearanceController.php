@@ -87,6 +87,13 @@ class AppearanceController extends Controller
             ->sortBy(fn (SectionSetting $s) => array_search($s->section_key, $headingSectionKeys, true))
             ->values();
 
+        // Iterasi 22 (Fase 4) — mode maintenance. Sama pola dgn variabel lain
+        // di atas: admin yang sedang mengedit form SELALU melihat nilai
+        // efektif draft (preview = true).
+        $maintenanceMode = DisplaySetting::getBool('maintenance_mode', false, true);
+        $maintenanceMessageId = DisplaySetting::get('maintenance_message_id', null, true);
+        $maintenanceMessageEn = DisplaySetting::get('maintenance_message_en', null, true);
+
         $tab = $request->query('tab', 'ringkasan');
 
         return view('admin.appearance.index', compact(
@@ -102,6 +109,9 @@ class AppearanceController extends Controller
             'floatingWidgetVisible',
             'heroSocialBarVisible',
             'headingSections',
+            'maintenanceMode',
+            'maintenanceMessageId',
+            'maintenanceMessageEn',
             'tab'
         ));
     }
@@ -311,6 +321,49 @@ class AppearanceController extends Controller
         return redirect()
             ->route('admin.appearance', ['tab' => 'sections'])
             ->with('success', 'Custom heading/subheading disimpan sebagai draft. Buka Preview untuk melihatnya, lalu Publish supaya berlaku di situs live.');
+    }
+
+    /**
+     * Iterasi 22 (Fase 4) — mode maintenance. Menyimpan ke
+     * display_settings.value_draft lewat DisplaySetting::setDraft(), pola
+     * sama persis dgn updateAnimations()/updateElements() — pengguna
+     * KELIMA dari alur draft generik Iterasi 18. Gating aktual di sisi
+     * publik dilakukan App\Http\Middleware\CheckMaintenanceMode, BUKAN di
+     * sini — controller ini murni menulis draft, tidak pernah membaca
+     * value LIVE.
+     */
+    public function updateMaintenance(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'maintenance_mode' => ['nullable', 'boolean'],
+            'maintenance_message_id' => ['nullable', 'string', 'max:500'],
+            'maintenance_message_en' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        DisplaySetting::setDraft('maintenance_mode', $request->boolean('maintenance_mode'));
+        DisplaySetting::setDraft('maintenance_message_id', ($validated['maintenance_message_id'] ?? '') !== '' ? $validated['maintenance_message_id'] : null);
+        DisplaySetting::setDraft('maintenance_message_en', ($validated['maintenance_message_en'] ?? '') !== '' ? $validated['maintenance_message_en'] : null);
+
+        return redirect()
+            ->route('admin.appearance', ['tab' => 'mode'])
+            ->with('success', 'Perubahan disimpan sebagai draft. Buka Preview untuk melihatnya, lalu Publish supaya berlaku di situs live.');
+    }
+
+    /**
+     * Iterasi 22 (Fase 4) — render halaman "Segera Hadir" apa adanya
+     * (dgn nilai DRAFT, preview=true) supaya admin bisa mengecek tampilan
+     * pesan custom tanpa perlu logout dulu. Rute TERPISAH dari
+     * CheckMaintenanceMode (yang HANYA pernah membaca nilai LIVE untuk
+     * pengunjung tidak login) — admin SELALU bypass maintenance di rute
+     * publik manapun (lihat docblock middleware), jadi tidak ada cara lain
+     * bagi admin melihat halaman ini kecuali lewat rute preview khusus ini.
+     */
+    public function previewMaintenance(Request $request): View
+    {
+        $messageId = DisplaySetting::get('maintenance_message_id', null, true);
+        $messageEn = DisplaySetting::get('maintenance_message_en', null, true);
+
+        return view('maintenance', compact('messageId', 'messageEn'));
     }
 
     /**

@@ -24,8 +24,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // ?preview=1|0 di halaman publik manapun) — ditambahkan ke grup
         // "web" (satu-satunya grup routing yang dipakai project ini, lihat
         // withRouting() di atas), bukan cuma dipasang di routes/web.php.
+        // Iterasi 22 (Fase 4): CheckMaintenanceMode didaftarkan SETELAH
+        // HandleAppearancePreview supaya urutan baca kode terasa alami
+        // (preview flag dulu, baru gating maintenance) — CheckMaintenanceMode
+        // sendiri sebenarnya tidak bergantung pada attribute yang di-set
+        // HandleAppearancePreview (lihat docblock-nya), jadi urutan ini
+        // murni untuk keterbacaan, bukan kebutuhan fungsional.
         $middleware->web(append: [
             \App\Http\Middleware\HandleAppearancePreview::class,
+            \App\Http\Middleware\CheckMaintenanceMode::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -61,6 +61,8 @@ $paths = [
     'image' => '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>',
     // Iterasi 20 (Fase 4) — drag handle di UI reorder section admin.
     'grip-vertical' => '<circle cx="9" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="19" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="19" r="1" fill="currentColor" stroke="none"/>',
+    // Iterasi 22 (Fase 4) — ikon Mode Situs (maintenance) di admin & halaman "Segera Hadir" publik.
+    'wrench' => '<path d="M14.7 6.3a4 4 0 1 0-5.6 5.6L3 18l3 3 6.1-6.1a4 4 0 0 0 5.6-5.6l-2.5 2.5-2-2z"/>',
 ];
 
 $inner = $paths[$name] ?? '<circle cx="12" cy="12" r="9"/>';

@@ -1,6 +1,6 @@
 # Rencana Pengembangan — Kustomisasi Tampilan Halaman Index (Fase 4)
 
-Status: **Draft — menunggu review sebelum Iterasi 18 dieksekusi. TIDAK ADA COMMIT OTOMATIS (sama seperti Fase 3, lihat bagian 2).**
+Status: **Iterasi 18-22 selesai & terverifikasi (fondasi draft/publish, preset warna & logo, reorder section & jumlah item, toggle sub-elemen & custom heading, mode maintenance) — lihat `LOG-ITERASI.md` untuk detail tiap iterasi. Tersisa Iterasi 23 (audit & QA penutup Fase 4). TIDAK ADA COMMIT OTOMATIS (sama seperti Fase 3, lihat bagian 2) — tiap iterasi di-commit manual oleh user setelah selesai.**
 Dibuat: 2026-08-24
 
 ## 1. Tujuan
