@@ -38,7 +38,12 @@
         .css (keduanya sama-sama men-target :root, jadi yang terakhir di
         <head> yang menang).
     --}}
-    @php $accentVars = \App\Support\AccentPreset::get($accentPreset ?? \App\Support\AccentPreset::DEFAULT); @endphp
+    {{--
+        Iterasi 25 (Fase 5): resolve() menangani preset "custom" (hex bebas
+        dari $accentCustomHex) selain 4 preset kurasi — lihat
+        App\Support\AccentPreset::resolve()/fromHex().
+    --}}
+    @php $accentVars = \App\Support\AccentPreset::resolve($accentPreset ?? \App\Support\AccentPreset::DEFAULT, $accentCustomHex ?? null); @endphp
     <style>
         :root {
             --accent-50: {{ $accentVars['50'] }};

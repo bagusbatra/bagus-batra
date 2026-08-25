@@ -57,6 +57,15 @@ class HandleAppearancePreview
         // <head>) & portfolio/partials/navbar.blade.php + footer.blade.php
         // (logo teks vs gambar).
         $accentPreset = DisplaySetting::get('accent_preset', AccentPreset::DEFAULT, $previewActive);
+
+        // Iterasi 25 (Fase 5) — preset ke-5 "custom" (lihat
+        // AccentPreset::CUSTOM_KEY/resolve()/fromHex()): hex bebas yang
+        // dipilih admin lewat color picker. Cuma dipakai kalau
+        // $accentPreset === 'custom', tapi tetap dihitung/dibagikan di sini
+        // tanpa syarat (pola sama $accentPreset) supaya layout tidak perlu
+        // query ulang.
+        $accentCustomHex = DisplaySetting::get('accent_custom_hex', null, $previewActive);
+
         $logoType = DisplaySetting::get('logo_type', 'text', $previewActive);
         $logoImage = DisplaySetting::get('logo_image', null, $previewActive);
 
@@ -79,6 +88,7 @@ class HandleAppearancePreview
         view()->share('animationsEnabled', $animationsEnabled);
         view()->share('appearanceHasDraft', $hasPendingDraft);
         view()->share('accentPreset', $accentPreset);
+        view()->share('accentCustomHex', $accentCustomHex);
         view()->share('logoType', $logoType);
         view()->share('logoImage', $logoImage);
         view()->share('navbarCtaVisible', $navbarCtaVisible);

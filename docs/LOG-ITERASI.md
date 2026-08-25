@@ -29,6 +29,177 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 25 — Preset Warna Aksen: Interaktivitas + Custom Color Picker (selesai: 2026-08-25)
+Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan Iterasi 24.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` bagian 4 Iterasi 25. **Kondisi awal sesi**: `git status --short` menunjukkan perubahan Iterasi 24 (hapus menu Playground) MASIH uncommitted — tidak disentuh/direvert, pekerjaan sesi ini ditumpuk di atasnya.
+
+**1) Bug interaktivitas preset warna (root cause dikonfirmasi sesuai dugaan di rencana)**: swatch preset di tab "Tema & Branding" (`admin/appearance/index.blade.php`) sebelumnya HANYA pakai kondisi Blade server-side (`{{ $accentPreset === $key ? ... }}`) utk border/checkmark — klik swatch lain MEMANG mengubah radio (form tetap valid saat submit) tapi TIDAK ADA umpan balik visual sampai reload. **Diperbaiki**: seluruh form dibungkus `x-data` dgn state `selectedPreset` (nama sengaja DIBEDAKAN dari variabel Blade `$preset` di `@foreach` supaya tidak membingungkan pembaca kode, meski keduanya tidak benar-benar bentrok scope — 1 PHP 1 JS), radio `x-model="selectedPreset"` (Blade `checked` dihapus, pola PERSIS `logoType` yg sudah ada & terbukti jalan sejak Iterasi 19 — Alpine yang set state awal saat mount, bukan lagi butuh Blade `checked`), border/checkmark ikut `:class`/`:class` reaktif. Klik swatch mana pun sekarang langsung terlihat terpilih tanpa reload.
+
+**2) Preset ke-5 "Custom"**: swatch baru berlabel "Custom" (radio value `App\Support\AccentPreset::CUSTOM_KEY = 'custom'`) + `<input type="color">` & input hex teks (muncul via `x-show="selectedPreset === 'custom'"`, pola sama `logoType === 'image'`). Warna picker sendiri (bulatan swatch ke-5) juga reaktif mengikuti `customHex` yg sedang diketik/dipilih admin — preview instan sebelum submit.
+
+**3) `App\Support\AccentPreset::fromHex(string $hex): array`** — hitung skala 6-step (50/100/300/500/600/700) dari 1 hex bebas via interpolasi HSL (hue & saturation dipertahankan persis dari hex input, hanya lightness yg digeser). **2 pendekatan dicoba, yang kedua dipakai**:
+   - **Percobaan 1 (offset lightness TETAP, poin persentase)**: dikalibrasi cocok utk indigo-600 (base L≈59%, sudah cukup terang) tapi GAGAL generalisasi ke hex lain — dicoba pada emerald-600 (base L≈30%, jauh lebih gelap), hasil step "50" cuma nyampe L≈68% (target seharusnya ~96% mendekati putih), menghasilkan warna "neon" terlalu jenuh bukan tint pucat. Ditemukan lewat pengujian nyata (`php artisan tinker`, `fromHex()` dibandingkan 4 preset kurasi), bukan cuma dugaan teoretis.
+   - **Percobaan 2 (dipakai, FRAKSI jarak tempuh)**: step > 600 dihitung sbg `L + (100-L) * fraksi` (proporsi jarak MENUJU PUTIH, bukan delta tetap), step 700 dihitung `L * (1 + fraksi_negatif)` (proporsi jarak menuju hitam). Fraksi (50→0.93, 100→0.85, 300→0.52, 500→0.16, 700→-0.17) di-reverse-engineer dari HSL 4 preset kurasi (rata-rata lintas indigo/emerald/rose/amber, terbukti konsisten ±0.05 antar hue yg sangat berbeda base lightness-nya — JAUH lebih stabil drpd delta tetap). Diverifikasi ulang: hasil `fromHex()` pada hex 600 keempat preset kurasi menghasilkan step 50-500 yg SANGAT DEKAT dgn nilai asli (selisih hex minor, secara visual serupa), step 700 mendekati tapi tidak identik (Tailwind asli menggeser saturasi juga di step ini, fromHex() tidak — didokumentasikan sbg trade-off sadar, konsisten dgn `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` bagian 3).
+   - `App\Support\AccentPreset::resolve(string $presetKey, ?string $customHex): array` — dispatcher tunggal dipakai semua tempat yg butuh render warna aktif: `custom` → `fromHex()`, selain itu → `get()` (4 preset kurasi, TIDAK berubah perilakunya).
+
+**4) Wiring**: `HandleAppearancePreview` tambah share `$accentCustomHex` (pola sama `$accentPreset`, preview-aware). `layouts/app.blade.php` & `maintenance.blade.php` — `AccentPreset::get(...)` diganti `AccentPreset::resolve($accentPreset, $accentCustomHex)`. `AppearanceController@index()` tambah `$accentCustomHex` (preview=true, sama pola form field lain). `AppearanceController@updateBranding()` — `accent_custom_hex` divalidasi `Rule::requiredIf` HANYA saat `accent_preset === 'custom'` dikirim (regex hex 6-digit), TAPI disimpan sbg draft KAPAN PUN dikirim berisi apa pun preset yg sedang dipilih (form selalu mengirim field ini, disembunyikan via `x-show` bukan dihapus dari DOM) — supaya kalau admin sempat isi warna custom lalu sementara pindah ke preset kurasi, pilihan custom-nya tidak hilang saat balik pilih "Custom" lagi nanti. `AccentPreset::keys()` diperluas menyertakan `CUSTOM_KEY` supaya `Rule::in(AccentPreset::keys())` meloloskan `accent_preset=custom`.
+
+**5) Verifikasi end-to-end** — `php artisan serve --port=8250` + `curl` sungguhan (cookie jar admin), `storage/logs/laravel.log` dikosongkan sebelum sesi → 0 baris di akhir.
+
+**Catatan kecil**: request `curl` PERTAMA ke server baru (`php artisan serve --port=8250`) sempat 503 (dicek ulang 2 detik kemudian via `sleep 2` — 200), pola umum "server belum sepenuhnya siap saat request pertama tepat setelah start" pada `php artisan serve`, BUKAN maintenance mode (nilai `maintenance_mode` sudah dikonfirmasi `0` di akhir sesi Iterasi 24 sebelumnya, tidak ada perubahan di antara kedua sesi). Tidak ada tindakan tambahan diperlukan, sekadar dicatat supaya tidak disalahartikan di masa depan sbg gejala bug.
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | `GET /admin/appearance?tab=branding` — cek markup baru | **LOLOS** — 5 kemunculan "Custom" (label + komentar terkait), 1 input `accent_custom_hex`, 17 kemunculan `selectedPreset`, radio `value="custom"` ada |
+| 2 | Draft `accent_preset=custom` + `accent_custom_hex=#7c3aed` (violet) | **LOLOS** — DB: `accent_preset.value_draft='custom'`, baris baru `accent_custom_hex.value_draft='#7c3aed'` |
+| 3 | `GET /` TANPA cookie setelah draft #2 | **LOLOS** — tetap `--accent-600: #4f46e5;` (indigo live, draft tidak bocor) |
+| 4 | `GET /` admin+`?preview=1` | **LOLOS** — `--accent-600: #7c3aed;` + skala lengkap 50-700 (`#f6f1fe` → `#6014e0`) sesuai `fromHex()` |
+| 5 | `POST /admin/appearance/publish` | **LOLOS** — `GET /` TANPA cookie: violet custom sekarang live, `#nav-hire-me-btn` (CTA) tetap 1 kemunculan (elemen brand-accent lain ikut berubah normal) |
+| 6 | `GET /projects`, `GET /projects/lumina-saas`, `GET /admin/appearance/maintenance/preview` (semua share layout) | **LOLOS** — ketiganya `--accent-600: #7c3aed;` juga (konsisten lintas semua jenis halaman, termasuk halaman maintenance) |
+| 7 | Ganti balik ke preset kurasi (`accent_preset=emerald`) → publish | **LOLOS** — visitor: `--accent-600: #059669;` (hex ASLI kurasi, BUKAN hasil `fromHex()` — `resolve()` terbukti benar routing ke `get()` utk key non-custom); DB `accent_custom_hex` TETAP tersimpan `#7c3aed` (tidak terhapus, sesuai desain "custom pick tidak hilang") |
+| 8 | Submit `accent_preset=custom` TANPA `accent_custom_hex` | **LOLOS** — validasi gagal (`Rule::requiredIf`), redirect balik dgn pesan error "The accent custom hex field is required.", TIDAK ada draft tertulis (`value_draft` tetap `null`) |
+| 9 | Submit `accent_preset=custom` + `accent_custom_hex=notahex` (format invalid) | **LOLOS** — validasi gagal (regex hex), tidak ada draft tertulis |
+| 10 | Restore: `accent_preset=indigo` → publish; housekeeping hapus baris `accent_custom_hex` (test artifact) | **LOLOS** — DB akhir: `accent_preset.value='indigo'` (pristine), `accent_custom_hex` tidak ada lagi, `hasPendingDraft()`=false |
+| 11 | **Regresi byte-per-byte**: `GET /` (minus token CSRF) SEBELUM sesi ini dibandingkan SESUDAH seluruh perubahan | **LOLOS — IDENTIK** (`diff` exit code 0) |
+| 12 | Smoke-test 7 halaman admin (dashboard + 6 tab appearance) | **LOLOS** — semua 200 |
+
+`storage/logs/laravel.log` bersih (0 baris) di seluruh titik pengecekan. Server dimatikan (`taskkill` PID, dikonfirmasi request berikutnya `000`/connection refused).
+
+### File/area utama yang berubah
+- **Kelas diubah**: `app/Support/AccentPreset.php` — `CUSTOM_KEY` const baru, `keys()` diperluas, method baru `resolve()`/`fromHex()` + 2 helper privat `hexToHsl()`/`hslToHex()`.
+- **Middleware diubah**: `app/Http/Middleware/HandleAppearancePreview.php` — tambah share `$accentCustomHex` (pola sama `$accentPreset`).
+- **Controller diubah**: `app/Http/Controllers/Admin/AppearanceController.php` — `index()` tambah `$accentCustomHex`, `updateBranding()` tambah validasi & penyimpanan `accent_custom_hex`.
+- **View diubah**: `resources/views/admin/appearance/index.blade.php` (blok preset warna direstruktur Alpine-reaktif + swatch ke-5 & color picker), `resources/views/layouts/app.blade.php` & `resources/views/maintenance.blade.php` (`AccentPreset::get()` → `AccentPreset::resolve()`).
+- **Skema DB**: TIDAK ada perubahan (`accent_custom_hex` disimpan di `display_settings` generik yg sudah ada sejak Iterasi 18) — `docs/ERD.md` TIDAK diupdate.
+- **Asset**: `npm run build` dijalankan ulang (kelas Tailwind baru di blok custom color picker).
+
+### Migrasi & seeder dijalankan
+- Tidak ada.
+
+### Verifikasi
+Lihat tabel 12 skenario di Ringkasan poin 5 — **SEMUA LOLOS**. `storage/logs/laravel.log` bersih sepanjang sesi. `GET /` byte-per-byte identik dgn sebelum Iterasi 25 di kondisi akhir (pristine, tidak ada draft pending).
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user.
+
+### Catatan untuk review
+- **Algoritma `fromHex()` BUKAN penjamin kontras/aksesibilitas** sekuat 4 preset kurasi manual — didokumentasikan eksplisit di teks bantuan form admin ("pilih warna yang cukup gelap/jenuh supaya teks putih di atasnya tetap terbaca"). Kalau nanti ditemukan hex tertentu menghasilkan skala yg terlihat jelek/kontras buruk, perbaikannya cukup menyesuaikan array `$fractions` di `fromHex()` (1 tempat terpusat), tidak perlu menyentuh pemanggilnya.
+- **`accent_custom_hex` sengaja TIDAK dihapus saat admin pindah ke preset kurasi lain** — nilai lama tetap tersimpan tidak terpakai sampai admin pilih "Custom" lagi. Konsekuensi: baris `display_settings.accent_custom_hex` bisa "menua" (berisi warna yg sudah lama tidak dipakai) tanpa mekanisme pembersihan otomatis — dampaknya nol (tidak pernah dibaca kecuali preset='custom' aktif), murni housekeeping kosmetik kalau suatu saat ingin diaudit manual.
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai instruksi user (commit manual).
+
+---
+
+## Iterasi 24 — Hapus Menu Playground (selesai: 2026-08-25)
+Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan setelah Fase 4 tuntas.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` bagian 4 Iterasi 24. **Kondisi awal sesi**: `git status --short` **BERSIH** kecuali `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` (rencana Fase 5, dibuat sesi sebelumnya, masih menunggu commit manual user) — tidak disentuh/direvert, pekerjaan sesi ini ditumpuk normal.
+
+Section publik `playground` sudah dihapus TOTAL dari `section_settings` & kode sejak Iterasi 19 (Fase 4) — menu admin "Playground" sudah jadi dead placeholder sejak saat itu (`PlaceholderController::PLACEHOLDERS['playground']`, murni catatan "segera hadir" tanpa fitur nyata di baliknya). Iterasi ini murni beres-beres, bukan penghapusan fitur yang masih dipakai.
+
+1. **Sidebar**: entry `['route' => 'admin.playground', 'label' => 'Playground', 'icon' => 'zap']` dihapus dari `$menu` di `resources/views/admin/layouts/app.blade.php`.
+2. **Route & controller**: entry `'playground' => [...]` dihapus dari `PlaceholderController::PLACEHOLDERS`, disisakan array kosong `[]` (BUKAN dihapus konstannya) — mekanisme placeholder generik ini (loop `array_keys(PLACEHOLDERS)` di `routes/admin.php`, tidak disentuh) tetap siap dipakai kalau ada menu admin baru di masa depan yang butuh halaman "segera hadir" sebelum fiturnya sendiri dibangun. Konsekuensi otomatis: route `admin.playground` hilang total (dikonfirmasi via `php artisan route:list`), TIDAK ADA baris route eksplisit yang perlu disentuh terpisah krn route ini didaftarkan lewat loop, bukan baris manual.
+3. **Beres-beres komentar basi** (ditemukan lewat grep menyeluruh `playground`/`Playground` di `app/`, `resources/`, `routes/`, `database/`) — 2 komentar yang menyebut "Playground" sbg konteks visual/histori TAPI sudah tidak relevan lagi dirapikan: `resources/views/admin/section-settings/_list.blade.php` ("style dipakai ulang dari toggle Backdrop Blur di Playground publik" → dihapus, toggle "Playground publik" itu sendiri sudah tidak ada), `resources/js/public.js` (docblock header menyebut "playground demo" sbg bagian isi bundle → dihapus, dicek `portfolio.js` TIDAK ADA lagi Alpine component/fungsi playground apa pun, jadi klaim itu memang sudah basi).
+4. **Referensi yang SENGAJA TIDAK disentuh** (dicek 1-per-1, bukan luput): migration `2026_08_24_090000_remove_playground_section_setting_row.php` & `2026_08_23_051326_create_section_settings_table.php` (catatan migrasi historis, migration yang sudah pernah dijalankan TIDAK diedit demi menjaga rekam jejak akurat), `database/seeders/SectionSettingSeeder.php` (komentar historis Iterasi 19, konteks valid), `database/seeders/ProjectSeeder.php` (kata "playground" muncul di teks deskripsi bisnis 1 project asli — "live preview playground" sbg FITUR fiktif project itu sendiri, sama sekali tidak terkait section situs, sudah didokumentasikan sbg pengecualian sejak Iterasi 19 juga).
+
+### File/area utama yang berubah
+- **Controller diubah**: `app/Http/Controllers/Admin/PlaceholderController.php` — `PLACEHOLDERS` dikosongkan (dari 1 entry `playground` jadi `[]`).
+- **View diubah**: `resources/views/admin/layouts/app.blade.php` (hapus entry sidebar), `resources/views/admin/section-settings/_list.blade.php` (rapikan komentar basi).
+- **JS diubah**: `resources/js/public.js` (rapikan komentar basi di docblock header).
+- **Route**: TIDAK ada baris diedit langsung (route hilang otomatis lewat loop `PLACEHOLDERS` yang sudah kosong).
+- **Model/Skema DB**: TIDAK ada perubahan — `docs/ERD.md` TIDAK diupdate di iterasi ini.
+
+### Migrasi & seeder dijalankan
+- Tidak ada.
+
+### Verifikasi
+**Via `php artisan serve --port=8240` + `curl` sungguhan (cookie jar login admin), `storage/logs/laravel.log` dikosongkan sebelum sesi → 0 baris di akhir.**
+
+**Catatan di luar scope literal iterasi ini, ditemukan saat startup verifikasi**: `GET /` sempat mengembalikan **503** (halaman maintenance) — dicek DB, `maintenance_mode.value='1'` dgn `updated_at` SETELAH sesi Iterasi 23 berakhir, artinya diaktifkan user sendiri di luar sesi ini (bukan sisa dari pengujian Iterasi 22/23 yang sudah dikonfirmasi kembali `0` di akhir sesi masing-masing). Dikonfirmasi ke user via pertanyaan langsung — user memilih **"Matikan"** — dimatikan lewat alur admin resmi (draft `maintenance_mode=0` → publish), BUKAN edit database langsung, supaya tetap lewat mekanisme resmi aplikasi & tercatat wajar. Setelah itu verifikasi Iterasi 24 dilanjutkan normal.
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | `GET /admin/dashboard` (sidebar) | **LOLOS** — 0 kemunculan teks "Playground" |
+| 2 | `GET /admin/playground` (rute lama) | **LOLOS** — 404 (bukan lagi halaman placeholder) |
+| 3 | Smoke-test 11 halaman admin lain (dashboard, appearance, section-settings, profile, social-links, about-skills, projects, experience, blog, testimonials, messages) | **LOLOS** — semua 200, tidak ada yang ikut rusak |
+| 4 | `GET /` & `GET /projects` (publik) | **LOLOS** — 200 (tidak terpengaruh, section playground sudah lama tidak ada di publik) |
+
+`storage/logs/laravel.log` bersih (0 baris) di akhir sesi. Server dimatikan (`taskkill` PID, dikonfirmasi request berikutnya `000`/connection refused).
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user.
+
+### Catatan untuk review
+- **Insiden maintenance mode aktif tak terduga** (lihat tabel Verifikasi di atas) — bukan bug, murni state aplikasi yang diubah user sendiri di luar sesi kerja ini, dikonfirmasi & diselesaikan sesuai instruksi user sebelum lanjut. Dicatat di sini supaya jelas kenapa `maintenance_mode` disentuh padahal di luar scope literal Iterasi 24.
+- `PlaceholderController::PLACEHOLDERS` sengaja disisakan sbg array KOSONG (bukan dihapus totalnya) — infrastruktur placeholder generik ini reusable untuk menu admin masa depan, menghapusnya total hanya untuk mengosongkan 1 entry adalah pekerjaan lebih besar dari yang dibutuhkan tanpa manfaat nyata.
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai instruksi user (commit manual).
+
+---
+
+## Iterasi 23 — Audit & QA Penutup Fase 4 (selesai: 2026-08-25)
+Status: Selesai — **Fase 4 (Kustomisasi Tampilan Halaman Index) TUNTAS SEPENUHNYA (Iterasi 18-23).**
+
+### Ringkasan
+Sesuai `docs/RENCANA-KUSTOMISASI-TAMPILAN.md` bagian 5 Iterasi 23 — murni audit/QA, **TIDAK ADA PERUBAHAN KODE** (tidak ditemukan regresi nyata dari Iterasi 18-22, lihat detail di bawah). **Kondisi awal sesi**: `git status --short` **BERSIH**, `git log` mengonfirmasi commit terakhir `9c82edd` ("feat: Implement maintenance mode with custom messages and preview functionality", Iterasi 22) sudah ter-commit oleh user.
+
+**1) Audit kode (baca ulang, sebelum uji langsung)** — ditelusuri interaksi antar fitur Iterasi 18-22 yang berpotensi konflik:
+   - `PortfolioController::SECTION_PARTIALS` vs `SectionSetting::effective()` vs `SectionSettingController@toggle` (mekanisme lama Iterasi 1, direct-live) — dikonfirmasi `is_active` TIDAK PERNAH ditulis ke `draft_overrides` oleh form manapun di Iterasi 20-21 (hanya `sort_order`/`display_count`/`heading_*`/`subheading_*`), jadi `effective('is_active', ...)` selalu jatuh ke kolom asli yang di-toggle langsung — dua mekanisme (direct-live utk `is_active`, draft/publish utk field lain) TERBUKTI tidak saling tabrakan by design, bukan cuma kebetulan.
+   - `ProjectPageController` (`/projects`, `/projects/{key}`, Fase 2) dikonfirmasi TIDAK memakai custom heading Iterasi 21 sama sekali (scope literal rencana = "halaman index" saja) — TAPI keduanya `@extends('layouts.app')` sehingga preset warna aksen/logo/animasi/mode maintenance (semuanya di-share lewat `HandleAppearancePreview` ke SEMUA view) tetap konsisten di ketiga jenis halaman publik. Perbedaan cakupan ini KONSISTEN dgn desain, bukan celah yg terlewat.
+   - `App\Http\Middleware\CheckMaintenanceMode` (Iterasi 22) vs seluruh mekanisme draft Iterasi 18-21 — dikonfirmasi tidak ada jalur di mana draft SETTING LAIN (non-maintenance) bisa "menembus" halaman maintenance, karena gating maintenance terjadi PALING AWAL (sebelum konten section apa pun dirender) dan admin selalu bypass tanpa syarat.
+
+**2) Verifikasi langsung — SATU sesi draft gabungan berisi SEMUA fitur Iterasi 18-22 sekaligus** (bukan satu-satu terpisah, sesuai instruksi rencana), via `php artisan serve --port=8230` + `curl` sungguhan (cookie jar admin), `storage/logs/laravel.log` dikosongkan sebelum sesi, `wc -l` dicek di banyak titik → konsisten 0 baris sepanjang SELURUH sesi (termasuk sempat menabrak 1 masalah teknis curl, lihat catatan di bawah — bukan error aplikasi).
+
+Draft digabung dalam SATU sesi: `animations_enabled=0`, `accent_preset=emerald` + upload `logo_type=image`, `navbar_cta_visible/floating_widget_visible/hero_social_bar_visible=0` (ketiganya sekaligus), reorder (testimonials sebelum projects) + `display_count` (projects=2, blog=2, testimonials=1), custom heading section `projects`, dan pesan custom maintenance (mode masih OFF di tahap ini).
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | Smoke-test 17 halaman admin (dashboard, appearance x6 tab, section-settings, profile, social-links, about-skills, projects, experience, blog, testimonials, messages, playground) | **LOLOS** — semua 200 |
+| 2 | Submit SEMUA 6 form draft Fase 4 sekaligus dalam 1 sesi (lihat daftar di atas) | **LOLOS** — DB: 7 baris `display_settings` (termasuk `logo_image` baru via upload) + 7 baris `section_settings.draft_overrides` semuanya terisi benar sesuai input |
+| 3 | `GET /`, `/projects`, `/projects/{key}` TANPA cookie (visitor) setelah draft #2 | **LOLOS** — SEMUA nilai LIVE (bukan draft): 0 kemunculan heading custom/warna emerald/logo gambar/`data-reveal-enabled="0"`, urutan section TIDAK berubah — draft gabungan TIDAK bocor sama sekali |
+| 4 | `GET /` admin+`?preview=1` — SEMUA perubahan draft harus tampil BERSAMAAN dalam SATU page load | **LOLOS** — heading custom (1x), accent emerald (1x), logo gambar (2x, navbar+footer), `data-reveal-enabled="0"` (1x), CTA navbar/widget/social-bar Hero (0x, semua tersembunyi bersamaan), urutan section baru (testimonials sebelum projects), card count sesuai draft (2 project, 2 blog, 1 testimonial) — SEMUA benar dalam 1 response, tidak ada yang "tertinggal" |
+| 5 | `GET /projects` & `/projects/{key}` admin+preview | **LOLOS** — accent emerald & logo gambar ikut ter-propagate (shared layout), TAPI heading custom index TIDAK muncul di sana (0x) — konsisten desain cakupan "index-only" |
+| 6 | `POST /admin/appearance/publish` (1x, semua sekaligus) | **LOLOS** — visitor TANPA cookie: SEMUA 6 perubahan di atas kini live BERSAMAAN dalam satu response (dicek ulang seluruh marker yang sama seperti skenario #4) |
+| 7 | Draft BARU: `maintenance_mode=1` + pesan custom → publish (ditumpuk DI ATAS state gabungan yg sudah live dari #6) | **LOLOS** — visitor TANPA cookie: `GET /`, `/projects`, `/projects/{key}` semuanya **503**, halaman maintenance menampilkan accent emerald (preset yg baru saja dipublish #6) DAN pesan custom — membuktikan maintenance mode "melapis di atas" state Fase 4 lain yg sudah live, bukan menggantikannya |
+| 8 | `GET /` admin (bypass) selagi maintenance live dari #7 | **LOLOS** — 200, 0 kemunculan "Segera Hadir", heading custom `projects` TETAP terlihat (1x) — admin melihat FULL state gabungan yg sudah live, bukan halaman maintenance |
+| 9 | `/admin/login` (tanpa cookie) & `/admin/dashboard` (dgn cookie) selagi maintenance live | **LOLOS** — keduanya 200, `/admin/*` tetap berfungsi penuh |
+| 10 | Matikan maintenance → publish | **LOLOS** — visitor kembali 200 |
+| 11 | **Uji discard**: draft BARU (`accent_preset=rose` + reorder lain) DI ATAS state gabungan yg sudah live dari #6 → `POST /admin/appearance/discard` | **LOLOS** — `hasPendingDraft()`=false, 0 baris `draft_overrides` pending, `accent_preset` live TETAP `emerald` (bukan balik ke `indigo` ataupun `rose` — discard membuang draft TERBARU saja, tidak menyentuh live sebelumnya) — `GET /` byte-per-byte (minus CSRF) identik dgn snapshot SEBELUM uji discard ini dimulai |
+| 12 | Restore SEMUA 6 pengaturan ke default awal (draft → publish 1x) | **LOLOS** — DB akhir: `accent_preset=indigo`, `logo_type=text`, `animations_enabled=1`, ketiga elemen=`1`, urutan section awal, `display_count`=NULL semua, heading `projects`=NULL, `maintenance_mode=0` |
+| 13 | Uji tambahan: toggle `testimonials` `is_active` OFF/ON via mekanisme LAMA (`PATCH /admin/section-settings/{id}/toggle`, direct-live, Iterasi 1) SETELAH seluruh fitur baru dipakai di sesi ini | **LOLOS** — berfungsi identik (section hilang/muncul sesuai toggle), membuktikan mekanisme lama & baru tetap tidak saling ganggu meski sudah dipakai bersamaan sepanjang sesi |
+| 14 | **Regresi byte-per-byte 3 jenis halaman publik** (minus token CSRF): `GET /`, `GET /projects`, `GET /projects/lumina-saas` — dibandingkan dgn snapshot di AWAL SESI Iterasi 23 (sebelum satu pun perubahan disentuh) | **LOLOS — IDENTIK di ketiganya** (`diff` exit code 0 utk semua) |
+
+**Catatan teknis non-aplikasi**: 1x percobaan upload logo sempat gagal (`curl: (26) Failed to open/read local data from file`) — ternyata sintaks `-F "field=@path;type=..."` (dgn akhiran `;type=`) tidak cocok dgn build curl mingw64 di lingkungan pengujian ini; dihapus akhirannya (`-F "field=@path"` saja) dan langsung berhasil di percobaan berikutnya. Murni isu tooling `curl` lokal, sudah dikonfirmasi BUKAN bug aplikasi (endpoint sama sudah lolos upload logo di verifikasi Iterasi 19).
+
+**Housekeeping akhir sesi** (3 residu, SEMUA sudah diketahui pola-nya dari iterasi sebelumnya, bukan temuan baru):
+- `maintenance_message_id`/`_en` sempat menyisakan teks uji di `value` (live) — pola no-op-write yg SAMA PERSIS didokumentasikan di catatan Iterasi 22 (`setDraft(null)` idempoten kalau `value_draft` sudah NULL). Dibersihkan manual via tinker.
+- `section_settings.sort_order` sempat drift (baris `skills` & `projects` sama-sama `sort_order=2`) setelah 1 putaran reorder+restore — pola no. 1 DRIFT YANG SAMA PERSIS sudah didokumentasikan sbg "non-blocking, cosmetic-only" di catatan Iterasi 20 (reorder menomori ulang 7 section top-level 0-6 sekuensial tanpa memperhitungkan slot tetap `skills`). Dikonfirmasi TIDAK berdampak fungsional (urutan render tetap benar, `skills` tetap nested benar di dalam `about`) sebelum dibetulkan manual via tinker kembali ke 0-7 pristine.
+- File upload test logo (`storage/app/public/branding/*.png`) + baris `display_settings.logo_image` — dihapus manual, pola persis sama dgn housekeeping Iterasi 19 poin 12.
+
+Setelah housekeeping, DB dikonfirmasi 100% pristine: `DisplaySetting::hasPendingDraft()`=false, `SectionSetting::whereNotNull('draft_overrides')->count()`=0, seluruh nilai live = default awal, `sort_order` 0-7 rapat tanpa tabrakan. Server dimatikan di akhir (`taskkill` PID, dikonfirmasi request berikutnya `000`/connection refused).
+
+### File/area utama yang berubah
+- **TIDAK ADA** — murni audit/QA, tidak ditemukan regresi nyata dari Iterasi 18-22 (lihat Ringkasan poin 1-2), sesuai instruksi rencana "Tidak ada perubahan kode baru kecuali menemukan regresi nyata dari iterasi sebelumnya".
+- `docs/LOG-ITERASI.md` (entri ini) & `docs/RENCANA-KUSTOMISASI-TAMPILAN.md` (status diubah jadi TUNTAS) — dokumentasi saja.
+
+### Migrasi & seeder dijalankan
+- Tidak ada — tidak ada perubahan kode/skema di iterasi ini.
+
+### Verifikasi
+Lihat tabel 14 skenario + audit kode poin 1 di Ringkasan di atas — **SEMUA LOLOS**, termasuk uji SATU sesi draft gabungan (bukan satu-satu terpisah) untuk seluruh setting Fase 4 sekaligus, uji maintenance mode "melapis" di atas state Fase 4 lain yg sudah live, uji discard tidak menyentuh live, dan regresi byte-per-byte identik di 3 jenis halaman publik dibanding snapshot awal sesi. `storage/logs/laravel.log` bersih (0 baris) sepanjang seluruh sesi. DB dikonfirmasi pristine di akhir (lihat "Housekeeping akhir sesi").
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user (meski tidak ada perubahan kode, entri dokumentasi ini + update status `RENCANA-KUSTOMISASI-TAMPILAN.md` tetap perlu di-commit).
+
+### Catatan untuk review
+- **Fase 4 (Iterasi 18-23) TUNTAS SEPENUHNYA** — seluruh 8 fitur kustomisasi tampilan (draft/publish, preset warna, logo, animasi, reorder section, jumlah item, sub-elemen, custom heading, mode maintenance) sudah dibangun, saling diuji bersamaan dalam 1 sesi gabungan tanpa konflik, dan tidak ada draft yang pernah bocor ke visitor biasa di skenario manapun yang diuji (termasuk kombinasi ganda: maintenance di atas state Fase 4 lain yg live, discard di atas state yg sudah live sebelumnya).
+- **Drift `sort_order` (`skills` vs section top-level) MASIH bisa terulang** setiap kali admin melakukan reorder — ini BUKAN dibetulkan di level kode (keputusan yg sama diambil di Iterasi 20: dampaknya murni kosmetik, memperbaikinya dgn benar butuh skema numbering yg lebih rumit yg di luar scope). Kalau area ini disentuh lagi di masa depan (pengembangan pasca-Fase 4), pertimbangkan memberi `skills` slot numerik yg TIDAK bertabrakan dgn skema reorder (mis. `sort_order` desimal atau field terpisah), supaya kolom "#" di daftar on/off admin tidak pernah menampilkan angka kembar.
+- **Tidak ada scope baru ditemukan yang perlu iterasi tambahan** — audit ini murni QA penutup, tidak mengubah/menambah fitur.
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai instruksi user (commit manual).
+
+---
+
 ## Iterasi 22 — Mode Maintenance (selesai: 2026-08-25)
 Status: Selesai — **Fase 4 (Kustomisasi Tampilan Halaman Index), lanjutan Iterasi 18-21.**
 

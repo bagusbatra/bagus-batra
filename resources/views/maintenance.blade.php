@@ -21,7 +21,7 @@
         pipeline request yang sama, jadi view()->share() sebelumnya sudah
         berlaku).
     --}}
-    @php $accentVars = \App\Support\AccentPreset::get($accentPreset ?? \App\Support\AccentPreset::DEFAULT); @endphp
+    @php $accentVars = \App\Support\AccentPreset::resolve($accentPreset ?? \App\Support\AccentPreset::DEFAULT, $accentCustomHex ?? null); @endphp
     <style>
         :root {
             --accent-50: {{ $accentVars['50'] }};

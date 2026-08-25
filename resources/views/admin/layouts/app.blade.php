@@ -42,7 +42,6 @@
             ['route' => 'admin.social-links', 'label' => 'Social Links', 'icon' => 'globe'],
             ['route' => 'admin.about-skills', 'label' => 'About & Skills', 'icon' => 'cpu'],
             ['route' => 'admin.projects', 'label' => 'Projects', 'icon' => 'folder-git-2'],
-            ['route' => 'admin.playground', 'label' => 'Playground', 'icon' => 'zap'],
             ['route' => 'admin.experience', 'label' => 'Experience', 'icon' => 'briefcase'],
             ['route' => 'admin.blog', 'label' => 'Blog', 'icon' => 'book-open'],
             ['route' => 'admin.testimonials', 'label' => 'Testimonials', 'icon' => 'quote'],

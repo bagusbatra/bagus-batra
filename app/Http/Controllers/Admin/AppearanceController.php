@@ -45,6 +45,11 @@ class AppearanceController extends Controller
         // draft (preview = true) supaya form mencerminkan draft yang baru
         // saja disimpan, bukan nilai live.
         $accentPreset = DisplaySetting::get('accent_preset', AccentPreset::DEFAULT, true);
+
+        // Iterasi 25 (Fase 5) — hex custom (preset "custom"), sama pola
+        // preview=true dgn $accentPreset.
+        $accentCustomHex = DisplaySetting::get('accent_custom_hex', null, true);
+
         $logoType = DisplaySetting::get('logo_type', 'text', true);
         $logoImage = DisplaySetting::get('logo_image', null, true);
         $accentPresets = AccentPreset::PRESETS;
@@ -100,6 +105,7 @@ class AppearanceController extends Controller
             'sections',
             'animationsEnabled',
             'accentPreset',
+            'accentCustomHex',
             'logoType',
             'logoImage',
             'accentPresets',
@@ -149,16 +155,35 @@ class AppearanceController extends Controller
      * sendiri. File hanya diproses kalau admin benar-benar upload file baru
      * di request ini; kalau tidak, logo_image draft yang sudah ada
      * (atau nilai live) tetap dipertahankan apa adanya.
+     *
+     * Iterasi 25 (Fase 5) — `accent_custom_hex` HANYA wajib diisi kalau
+     * `accent_preset === AccentPreset::CUSTOM_KEY` (dicek via
+     * Rule::requiredIf), tapi TETAP disimpan sbg draft kapan pun dikirim
+     * berisi (apa pun preset yang sedang dipilih) — supaya kalau admin
+     * pernah mengisi warna custom lalu sementara pindah ke salah satu 4
+     * preset kurasi, pilihan custom-nya tidak hilang saat mereka balik
+     * pilih "Custom" lagi nanti (form selalu mengirim field ini, disembunyikan
+     * via Alpine `x-show`, bukan dihapus dari DOM).
      */
     public function updateBranding(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'accent_preset' => ['required', Rule::in(AccentPreset::keys())],
+            'accent_custom_hex' => [
+                Rule::requiredIf(fn () => $request->input('accent_preset') === AccentPreset::CUSTOM_KEY),
+                'nullable',
+                'regex:/^#[0-9a-fA-F]{6}$/',
+            ],
             'logo_type' => ['required', 'in:text,image'],
             'logo_image_file' => ['nullable', 'image', 'max:2048'],
         ]);
 
         DisplaySetting::setDraft('accent_preset', $validated['accent_preset']);
+
+        if (filled($validated['accent_custom_hex'] ?? null)) {
+            DisplaySetting::setDraft('accent_custom_hex', $validated['accent_custom_hex']);
+        }
+
         DisplaySetting::setDraft('logo_type', $validated['logo_type']);
 
         if ($request->hasFile('logo_image_file')) {

@@ -68,7 +68,7 @@
 
                     <span class="text-xs font-bold w-16 text-right" :class="active ? 'text-emerald-600' : 'text-slate-400'" x-text="active ? 'Aktif' : 'Nonaktif'"></span>
 
-                    {{-- Modern pill switch — style dipakai ulang dari toggle "Backdrop Blur" di Playground publik --}}
+                    {{-- Modern pill switch --}}
                     <button
                         type="button"
                         @click="toggle()"

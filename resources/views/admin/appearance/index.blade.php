@@ -111,7 +111,17 @@
         {{-- Tab: Tema & Branding — FUNGSIONAL (Iterasi 19) --}}
         <div x-show="tab === 'branding'" x-cloak data-reveal class="space-y-4">
             {{-- Preset Warna Aksen --}}
-            <form method="POST" action="{{ route('admin.appearance.branding.update') }}" enctype="multipart/form-data" x-data="{ logoType: '{{ $logoType }}' }" class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-6 space-y-5">
+            <form
+                method="POST"
+                action="{{ route('admin.appearance.branding.update') }}"
+                enctype="multipart/form-data"
+                x-data="{
+                    logoType: '{{ $logoType }}',
+                    selectedPreset: '{{ $accentPreset }}',
+                    customHex: '{{ $accentCustomHex ?: '#4f46e5' }}',
+                }"
+                class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-6 space-y-5"
+            >
                 @csrf
                 @method('PUT')
 
@@ -120,19 +130,52 @@
                     <p class="text-xs text-slate-500 mt-0.5">Diterapkan ke elemen brand-accent saja (tombol CTA utama, pill nav aktif, badge label section, gradient judul Hero, border hover card, tombol filter aktif) — bukan warna netral (teks/latar/border slate).</p>
                 </div>
 
+                {{--
+                    Iterasi 25 (Fase 5): dibungkus Alpine reaktif
+                    (`selectedPreset` x-model, nama sengaja beda dari
+                    variabel Blade `$preset` di @foreach di bawah supaya
+                    tidak membingungkan pembaca — 2 var beda, satu PHP satu
+                    JS, TIDAK saling tabrakan scope tapi mirip nama itu
+                    sendiri sudah cukup alasan utk dibedakan) — SEBELUMNYA
+                    border/checkmark tiap swatch murni kondisi Blade
+                    server-side, jadi klik swatch lain MEMANG mengubah radio
+                    (form tetap valid saat submit) tapi TIDAK ADA umpan
+                    balik visual sampai reload. `:class`/`x-show` di bawah
+                    pola sama persis `logoType` yg sudah ada di form ini
+                    sejak Iterasi 19.
+                --}}
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     @foreach ($accentPresets as $key => $preset)
-                        <label class="relative flex flex-col items-center gap-2 p-4 rounded-2xl border cursor-pointer transition-colors {{ $accentPreset === $key ? 'border-slate-900 bg-slate-50' : 'border-slate-200/70 hover:bg-slate-50/60' }}">
-                            <input type="radio" name="accent_preset" value="{{ $key }}" class="sr-only peer" {{ $accentPreset === $key ? 'checked' : '' }}>
+                        <label class="relative flex flex-col items-center gap-2 p-4 rounded-2xl border cursor-pointer transition-colors" :class="selectedPreset === '{{ $key }}' ? 'border-slate-900 bg-slate-50' : 'border-slate-200/70 hover:bg-slate-50/60'">
+                            <input type="radio" name="accent_preset" value="{{ $key }}" x-model="selectedPreset" class="sr-only">
                             <span class="w-9 h-9 rounded-full border-2 border-white shadow-md" style="background-color: {{ $preset['swatch'] }};"></span>
                             <span class="text-xs font-bold text-slate-700">{{ $preset['label'] }}</span>
-                            @if ($accentPreset === $key)
-                                <span class="absolute top-2 right-2 w-4 h-4 rounded-full bg-slate-900 text-white flex items-center justify-center">
-                                    <x-icon name="check" class="w-2.5 h-2.5" />
-                                </span>
-                            @endif
+                            <span class="absolute top-2 right-2 w-4 h-4 rounded-full bg-slate-900 text-white items-center justify-center" :class="selectedPreset === '{{ $key }}' ? 'flex' : 'hidden'">
+                                <x-icon name="check" class="w-2.5 h-2.5" />
+                            </span>
                         </label>
                     @endforeach
+
+                    {{-- Swatch ke-5: warna custom bebas (color picker), lihat App\Support\AccentPreset::fromHex(). --}}
+                    <label class="relative flex flex-col items-center gap-2 p-4 rounded-2xl border cursor-pointer transition-colors" :class="selectedPreset === '{{ \App\Support\AccentPreset::CUSTOM_KEY }}' ? 'border-slate-900 bg-slate-50' : 'border-slate-200/70 hover:bg-slate-50/60'">
+                        <input type="radio" name="accent_preset" value="{{ \App\Support\AccentPreset::CUSTOM_KEY }}" x-model="selectedPreset" class="sr-only">
+                        <span class="w-9 h-9 rounded-full border-2 border-white shadow-md" :style="'background-color: ' + customHex + ';'"></span>
+                        <span class="text-xs font-bold text-slate-700">Custom</span>
+                        <span class="absolute top-2 right-2 w-4 h-4 rounded-full bg-slate-900 text-white items-center justify-center" :class="selectedPreset === '{{ \App\Support\AccentPreset::CUSTOM_KEY }}' ? 'flex' : 'hidden'">
+                            <x-icon name="check" class="w-2.5 h-2.5" />
+                        </span>
+                    </label>
+                </div>
+
+                {{-- Color picker — muncul HANYA saat preset "custom" dipilih, pola sama x-show `logoType === 'image'` di bawah. --}}
+                <div x-show="selectedPreset === '{{ \App\Support\AccentPreset::CUSTOM_KEY }}'" x-cloak class="p-4 rounded-2xl border border-slate-200/70 bg-slate-50/60 space-y-2.5">
+                    <label class="block text-xs font-bold text-slate-800">Warna Aksen Custom (hex)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" x-model="customHex" class="w-11 h-10 rounded-lg border border-white/90 cursor-pointer shrink-0 bg-white/70" />
+                        <input type="text" name="accent_custom_hex" x-model="customHex" placeholder="#4f46e5" maxlength="7" class="flex-1 px-3.5 py-2.5 bg-white/70 backdrop-blur-md rounded-xl border border-white/90 text-sm font-mono text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs transition-colors" />
+                    </div>
+                    <p class="text-[11px] text-slate-500">5 gradasi lain (terang → gelap) dihitung otomatis dari 1 warna ini. Kontras/aksesibilitas TIDAK dijamin seketat 4 preset kurasi di atas — pilih warna yang cukup gelap/jenuh supaya teks putih di atasnya tetap terbaca.</p>
+                    @error('accent_custom_hex') <p class="text-[11px] text-rose-600 font-semibold">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="border-t border-slate-200/70 pt-5 space-y-4">

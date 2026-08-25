@@ -25,10 +25,16 @@ class PlaceholderController extends Controller
      * pemanggilan Controller@method biasa (lihat routes/admin.php) —
      * slug ditentukan dari nama route saat runtime, bukan dari parameter
      * closure lagi.
+     *
+     * Iterasi 24 (Fase 5): satu-satunya entry ('playground') dihapus —
+     * section publiknya sendiri sudah dihapus total sejak Iterasi 19
+     * (Fase 4), jadi menu placeholder ini sudah jadi dead link sejak saat
+     * itu. Array dibiarkan kosong (bukan dihapus konstannya) supaya
+     * mekanisme placeholder generik ini tetap siap dipakai kalau ada menu
+     * admin baru di masa depan yang butuh halaman "segera hadir" sebelum
+     * fiturnya sendiri dibangun (pola sudah terbukti sejak Fase 1).
      */
-    public const PLACEHOLDERS = [
-        'playground' => ['Playground', 'Segera hadir — saklar aktif/nonaktifnya sudah ada di menu Pengaturan Section'],
-    ];
+    public const PLACEHOLDERS = [];
 
     public function show(Request $request): View
     {
