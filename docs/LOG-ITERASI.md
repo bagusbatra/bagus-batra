@@ -29,6 +29,65 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 28 — Projects: Redesain Layout Admin (Mirip Halaman Publik) + Hide/Unhide Blok (selesai: 2026-08-25)
+Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan Iterasi 24-27.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` bagian 4 Iterasi 28. **Kondisi awal sesi**: `git status --short` **BERSIH**, `git log` mengonfirmasi commit terakhir `d21e9de` ("integrate Tiptap rich text editor for blog sections", Iterasi 27) sudah ter-commit user.
+
+**1) Skema — kolom baru** `projects.hidden_blocks` (JSON, nullable) via migrasi `2026_08_25_165001_add_hidden_blocks_to_projects_table.php` — array block-key opsional yang admin sembunyikan paksa per-project di halaman detail publik, meski datanya terisi. NULL/kosong = semua blok tampil (100% backward compatible). **Direct-live** (BUKAN lewat draft/publish Fase 4) — konsisten dgn seluruh CRUD Projects sejak Fase 1, Fase 4 bagian 6 eksplisit membatasi draft/publish HANYA utk pengaturan tampilan situs. `docs/ERD.md` diupdate (tabel `PROJECTS` + entri riwayat baru).
+
+**2) 7 blok hideable** (`Admin\ProjectController::HIDEABLE_BLOCKS`, const baru) — dipilih dari blok yang SUDAH conditional di `projects/show.blade.php` tapi selama ini cuma bergantung "kosong/tidak": `metrics`, `highlights`, `tech_frontend`, `tech_backend`, `tech_database`, `tech_cloud`, `tab_preview` (seluruh tab "Simulasi Interaktif", TERMASUK tombol tab-nya sendiri — dicek eksplisit supaya tidak ada tombol tab "mati" yang membuka konten kosong). Blok kerangka halaman (banner, breadcrumb, tags footer, tombol demo/github, tab Overview & Architecture ITU SENDIRI, field wajib spt `long_description`) SENGAJA TIDAK termasuk — bukan "blok konten opsional", itu kerangka halaman. `Project::isBlockHidden(string $key)` (helper baru di model) dipakai di 7 titik `@if`/`@unless` di `show.blade.php` — SYARAT TAMBAHAN, bukan pengganti (`!empty(...) && !isBlockHidden(...)` utk metrics/highlights/tech_*, `@unless` terpisah bungkus tombol+konten tab_preview).
+
+**3) Redesain form admin — 3 tab yang namanya & urutannya PERSIS meniru tab publik** (Ikhtisar & Solusi / Arsitektur Stack / Simulasi Interaktif, Alpine `x-data="{ tab: 'overview' }"` lokal sama pola `projects/show.blade.php`) — **TIDAK ADA field yang hilang/berubah nama**, murni reorganisasi visual. Field yang TETAP di luar tab (selalu tampil, mirror banner & footer publik yang juga selalu tampil apa pun tab aktif): Informasi Dasar (title/tagline/description/category/featured), Gambar Banner, Tags, Link & Tampilan (github_url/color_gradient/accent_color). `role`/`timeline`/`client`/`long_description`/metrics/highlights PINDAH ke tab Overview (mirror info grid + konten tab Overview publik). Tech Stack 4 grup PINDAH ke tab Architecture. `demo_url` PINDAH ke tab Preview (field itu yang mengisi tombol CTA di tab tsb secara publik). **BUKAN** live-preview WYSIWYG sungguhan (tidak me-render ulang `show.blade.php` di form) — sesuai batasan literal rencana.
+
+**4) Toggle hide/unhide** — switch kecil menempel LANGSUNG di header tiap blok terkait (bukan dikumpulkan terpisah, supaya konteksnya jelas), native checkbox + Tailwind `peer-checked` (pola PERSIS toggle "Reveal-on-scroll" di `admin/appearance/index.blade.php` — TIDAK butuh Alpine sama sekali, beda dari toggle "Featured" yang pakai tombol Alpine krn ada state lain yang bergantung; di sini cukup CSS murni). Disimpan sbg `hidden_blocks[]` checkbox array — checkbox yang TIDAK dicentang tidak ikut terkirim di POST (perilaku native HTML), jadi `$data['hidden_blocks'] = array_values($data['hidden_blocks'] ?? [])` di controller SELALU replace penuh array (bukan merge) — konsisten dgn semantik "state form saat ini", sama seperti `tags`/`metrics`/`highlights` yang sudah lebih dulu berperilaku begini.
+
+**5) INSIDEN ditemukan & diperbaiki di TENGAH verifikasi (bukan bug kode, kesalahan metodologi uji sendiri)**: submit form via `curl` dengan payload PARSIAL (hanya field yang ingin diuji) ternyata **menghapus** data project asli (`tags`/`highlights`/`metrics`/3 dari 4 grup tech_stack jadi `[]`, `featured` jadi `false`, `description`/`long_description` tertimpa teks uji) — root cause: `ProjectController@validated()` (kode EXISTING, TIDAK diubah Iterasi 28) punya baris `$data['tags'] = array_values(array_filter($data['tags'] ?? [], ...))` dkk yang SELALU mengeksekusi filter dgn fallback `?? []` — kalau field itu SAMA SEKALI tidak ada di request (bukan cuma kosong), hasilnya tetap `[]`. Form browser SUNGGUHAN selalu mengirim SEMUA field repeater (via hidden input Alpine-bound), jadi ini TIDAK PERNAH terjadi di pemakaian normal — HANYA muncul krn payload uji `curl` manual saya sengaja parsial. **Data project 1 (`lumina-saas`) dipulihkan penuh manual via tinker** (disalin ulang dari `database/seeders/ProjectSeeder.php`) SEBELUM lanjut verifikasi. Verifikasi SELANJUTNYA memakai **browser sungguhan** (claude-in-chrome, klik toggle asli + submit form asli) untuk semua pengujian create/update — bukan curl manual — supaya tidak mengulang kesalahan yang sama.
+
+**6) Verifikasi end-to-end** — `php artisan serve --port=8280` + `curl` (baca-saja & validasi) DAN **browser sungguhan** (untuk semua submit form), `storage/logs/laravel.log` dikosongkan sebelum sesi → 0 baris di akhir.
+
+| # | Skenario | Metode | Hasil |
+|---|---|---|---|
+| 1 | `GET /admin/projects/1/edit` — 3 tab + 7 checkbox `hidden_blocks[]` ada | curl | **LOLOS** |
+| 2 | (Insiden data-loss curl parsial, lihat Ringkasan poin 5) → pemulihan manual dari seeder | tinker | **LOLOS** — data project 1 kembali persis sama dgn `ProjectSeeder.php` |
+| 3 | Set `hidden_blocks=['tech_database']` (tinker, murni utk cek render publik cepat sebelum uji UI penuh) → `GET /projects/lumina-saas` | tinker+curl | **LOLOS** — blok "Database & Caching Layer" 0 kemunculan, 3 grup tech_stack lain + metrics/highlights/preview tab TETAP tampil |
+| 4 | Project lain (`aurora-commerce`) tidak ikut terpengaruh | curl | **LOLOS** — `hidden_blocks` tetap `null` |
+| 5 | Set `hidden_blocks=['tab_preview']` (whole tab) | tinker+curl | **LOLOS** — tombol tab `#tab-preview` DAN kontennya (`Live Sandbox Active`) 0 kemunculan bersamaan; tab lain (`#tab-overview`/`#tab-architecture`) tetap ada; `tech_database` kembali muncul (hanya `tab_preview` yg disembunyikan di skenario ini) |
+| 6 | Restore `hidden_blocks=null` → `GET /projects/lumina-saas` dibandingkan snapshot AWAL sesi (byte-per-byte, minus CSRF) | tinker+curl | **LOLOS — IDENTIK** |
+| 7 | **Browser sungguhan**: buka `/admin/projects/1/edit`, klik 3 tab berurutan (Overview → Architecture → Preview), cek data ter-load benar di tiap tab (screenshot) | claude-in-chrome | **LOLOS** — 0 console error |
+| 8 | Klik toggle "Sembunyikan" di grup Database (screenshot zoom konfirmasi warna berubah abu→rose) → klik "Simpan Perubahan" (form ASLI, bukan curl) | claude-in-chrome | **LOLOS** — flash "Project berhasil diperbarui"; DB dicek (tinker): `hidden_blocks=["tech_database"]`, SEMUA field lain (`tags`/`metrics`/`highlights`/`tech_stack`/`featured`) UTUH tidak berubah — konfirmasi form asli TIDAK punya bug data-loss yang sama seperti curl parsial |
+| 9 | Buka `/projects/lumina-saas` di browser, klik tab "Arsitektur Stack" | claude-in-chrome | **LOLOS** (screenshot) — "Database & Caching Layer" visually hilang, 3 grup lain tampil normal, 0 console error |
+| 10 | Uncheck toggle via UI asli → simpan lagi (restore) | claude-in-chrome | **LOLOS** — `hidden_blocks=[]`; `GET /projects/lumina-saas` byte-identik snapshot awal sesi |
+| 11 | Submit `hidden_blocks[]=bogus_block` (key tak dikenal) | curl | **LOLOS** — validasi gagal (`Rule::in(HIDEABLE_BLOCKS keys)`), tidak ada perubahan tersimpan |
+| 12 | Regresi: smoke-test 8 halaman admin, `GET /`, `/projects`, SEMUA 5 halaman detail project | curl | **LOLOS** — semua 200 |
+
+`storage/logs/laravel.log` bersih (0 baris) sepanjang sesi. Server dimatikan di akhir.
+
+### File/area utama yang berubah
+- **Migrasi baru**: `database/migrations/2026_08_25_165001_add_hidden_blocks_to_projects_table.php`.
+- **Model diubah**: `app/Models/Project.php` — `hidden_blocks` masuk `$fillable`/`$casts` (array), method baru `isBlockHidden()`.
+- **Controller diubah**: `app/Http/Controllers/Admin/ProjectController.php` — const baru `HIDEABLE_BLOCKS` (7 key), `create()`/`edit()` kirim `$hideableBlocks` ke view, `validated()` proses & normalisasi `hidden_blocks`.
+- **View diubah**: `resources/views/admin/projects/form.blade.php` (restrukturisasi total jadi 3 tab + toggle hide/unhide, lihat Ringkasan poin 3-4), `resources/views/projects/show.blade.php` (7 titik `@if`/`@unless` tambahan).
+- **Dokumentasi**: `docs/ERD.md` diupdate (kolom baru di tabel `PROJECTS` + entri riwayat) — skema BERUBAH di iterasi ini (beda dari kebanyakan iterasi Fase 5 lain yang cuma pakai `display_settings` generik).
+
+### Migrasi & seeder dijalankan
+- `php artisan migrate` — 1 migrasi baru (`add_hidden_blocks_to_projects_table`) sukses.
+
+### Verifikasi
+Lihat tabel 12 skenario di Ringkasan poin 6 — **SEMUA LOLOS**, termasuk 1 insiden data-loss yang ditemukan & dipulihkan di TENGAH sesi (kesalahan metodologi uji `curl` sendiri, BUKAN bug kode Iterasi 28 — akar masalahnya di kode `validated()` EXISTING yang sudah ada sejak Fase 1, terungkap krn cara uji yang tidak realistis). `storage/logs/laravel.log` bersih sepanjang sesi. Regresi publik/admin hijau.
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user.
+
+### Catatan untuk review
+- **PELAJARAN METODOLOGI, dicatat eksplisit utk iterasi mendatang**: jangan pernah menguji endpoint update CRUD (Projects/Blog/dst) dengan payload `curl` PARSIAL kalau controller-nya punya pola "normalize array field dgn fallback `?? []`" (pola ini SUDAH ADA di `ProjectController`/`BlogPostController` sejak Fase 1, bukan sesuatu yang baru) — payload curl utk uji CRUD SEBAIKNYA menyalin field lengkap dari data existing (via tinker dulu) ATAU pakai browser sungguhan langsung sejak awal (bukan cuma di akhir sbg konfirmasi tambahan). Iterasi 27 sudah menunjukkan pentingnya uji browser utk bug JS; Iterasi 28 menunjukkan pentingnya uji browser (atau payload lengkap) utk mencegah *false data-loss* saat menguji endpoint form yang kompleks.
+- **`hidden_blocks` TIDAK melalui draft/publish** — perubahan langsung live begitu admin klik "Simpan Perubahan", sama seperti seluruh field Project lainnya. Kalau nanti ada permintaan preview-before-live utk fitur ini juga, itu perluasan scope besar (memperluas draft/publish Fase 4 ke konten CRUD, eksplisit di luar batasan Fase 4 bagian 6) — bukan sekadar toggle kecil.
+- **Tombol tab "Simulasi Interaktif" & isinya dibungkus `@unless` yang SAMA** (bukan 2 kondisi terpisah yang bisa drift) — kalau nanti ditemukan butuh kondisi berbeda utk keduanya, pertimbangkan alasannya baik-baik sebelum memisah, krn tombol tab tanpa konten (atau sebaliknya) adalah UX yang rusak.
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai instruksi user (commit manual).
+
+---
+
 ## Iterasi 27 — Blog: Rich Text Editor (Tiptap) (selesai: 2026-08-25)
 Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan Iterasi 24-26.**
 

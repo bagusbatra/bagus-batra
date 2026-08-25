@@ -20,6 +20,25 @@ class ProjectController extends Controller
      */
     public const CATEGORIES = ['Full-Stack', 'Frontend', 'UI/UX & Systems', 'Open Source', 'AI & Tools'];
 
+    /**
+     * Iterasi 28 (Fase 5) — 7 blok konten OPSIONAL di halaman detail publik
+     * (resources/views/projects/show.blade.php) yang admin bisa paksa
+     * sembunyikan per-project lewat `hidden_blocks`, meski datanya terisi.
+     * Blok kerangka halaman (banner, breadcrumb, tags footer, tombol demo/
+     * github, tab Overview & Architecture ITU SENDIRI, field wajib spt
+     * long_description) SENGAJA TIDAK termasuk — lihat
+     * docs/RENCANA-PENYEMPURNAAN-ADMIN.md bagian 3.
+     */
+    public const HIDEABLE_BLOCKS = [
+        'metrics' => 'Hasil & Dampak Terukur (Metrics)',
+        'highlights' => 'Sorotan Fitur & Inovasi (Highlights)',
+        'tech_frontend' => 'Tech Stack — Frontend & Client',
+        'tech_backend' => 'Tech Stack — Backend & API',
+        'tech_database' => 'Tech Stack — Database & Caching',
+        'tech_cloud' => 'Tech Stack — Cloud, CI/CD & Deployment',
+        'tab_preview' => 'Tab "Simulasi Interaktif" (Live Sandbox)',
+    ];
+
     public function index(Request $request): View
     {
         $query = Project::query();
@@ -44,7 +63,11 @@ class ProjectController extends Controller
 
     public function create(): View
     {
-        return view('admin.projects.form', ['project' => new Project(), 'categories' => self::CATEGORIES]);
+        return view('admin.projects.form', [
+            'project' => new Project(),
+            'categories' => self::CATEGORIES,
+            'hideableBlocks' => self::HIDEABLE_BLOCKS,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -61,7 +84,11 @@ class ProjectController extends Controller
 
     public function edit(Project $project): View
     {
-        return view('admin.projects.form', ['project' => $project, 'categories' => self::CATEGORIES]);
+        return view('admin.projects.form', [
+            'project' => $project,
+            'categories' => self::CATEGORIES,
+            'hideableBlocks' => self::HIDEABLE_BLOCKS,
+        ]);
     }
 
     public function update(Request $request, Project $project): RedirectResponse
@@ -136,9 +163,18 @@ class ProjectController extends Controller
             'featured' => ['nullable', 'boolean'],
             'color_gradient' => ['nullable', 'string', 'max:255'],
             'accent_color' => ['nullable', 'string', 'max:20'],
+            'hidden_blocks' => ['nullable', 'array'],
+            'hidden_blocks.*' => ['string', Rule::in(array_keys(self::HIDEABLE_BLOCKS))],
         ]);
 
         $data['featured'] = $request->boolean('featured');
+        // Iterasi 28 (Fase 5): checkbox array — field absen dari request sama
+        // sekali (semua kotak dikosongkan admin) berarti "tidak ada yang
+        // disembunyikan", BUKAN "tidak berubah" — beda dgn pola display_count
+        // Fase 4 (yg memang selalu re-submit semua nilai tiap saat), array
+        // checkbox HTML native memang begini (checkbox yg tidak dicentang
+        // TIDAK ikut terkirim di form POST sama sekali).
+        $data['hidden_blocks'] = array_values($data['hidden_blocks'] ?? []);
 
         // Repeater rows may include blank rows the user added then didn't
         // fill in — drop empty entries so the JSON stored is clean.

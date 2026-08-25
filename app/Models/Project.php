@@ -27,6 +27,7 @@ class Project extends Model
         'color_gradient',
         'accent_color',
         'sort_order',
+        'hidden_blocks',
     ];
 
     protected $casts = [
@@ -35,7 +36,20 @@ class Project extends Model
         'highlights' => 'array',
         'tech_stack' => 'array',
         'featured' => 'boolean',
+        'hidden_blocks' => 'array',
     ];
+
+    /**
+     * Iterasi 28 (Fase 5) — helper dipakai projects/show.blade.php di tiap
+     * blok opsional (`!$project->isBlockHidden('metrics')`, dst) supaya
+     * Blade tidak perlu menulis `!in_array(..., $project->hidden_blocks ??
+     * [])` berulang 7x. `hidden_blocks` NULL (belum pernah diatur admin) =
+     * tidak ada yang tersembunyi.
+     */
+    public function isBlockHidden(string $key): bool
+    {
+        return in_array($key, $this->hidden_blocks ?? [], true);
+    }
 
     // NOTE (Iterasi 11 / Fase 2): route-model-binding for the PUBLIC detail
     // page uses project_key, not id — done via the explicit `{project:

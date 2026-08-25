@@ -81,10 +81,13 @@
                         <span x-show="$store.lang.current === 'id'">Arsitektur Stack</span>
                         <span x-show="$store.lang.current === 'en'" x-cloak>Tech Architecture</span>
                     </button>
-                    <button id="tab-preview" @click="tab = 'preview'" class="px-4 py-2.5 text-xs font-bold rounded-t-xl transition-colors cursor-pointer shrink-0" :class="tab === 'preview' ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-2xs' : 'text-slate-500 hover:text-slate-900'">
-                        <span x-show="$store.lang.current === 'id'">Simulasi Interaktif</span>
-                        <span x-show="$store.lang.current === 'en'" x-cloak>Live Preview</span>
-                    </button>
+                    {{-- Iterasi 28 (Fase 5): tab_preview bisa disembunyikan admin (Project::isBlockHidden(), lihat Admin\ProjectController::HIDEABLE_BLOCKS) — tombol tab & isinya (di bawah) dibungkus @unless yang SAMA supaya tidak ada tombol "mati" yang membuka konten kosong. --}}
+                    @unless ($project->isBlockHidden('tab_preview'))
+                        <button id="tab-preview" @click="tab = 'preview'" class="px-4 py-2.5 text-xs font-bold rounded-t-xl transition-colors cursor-pointer shrink-0" :class="tab === 'preview' ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-2xs' : 'text-slate-500 hover:text-slate-900'">
+                            <span x-show="$store.lang.current === 'id'">Simulasi Interaktif</span>
+                            <span x-show="$store.lang.current === 'en'" x-cloak>Live Preview</span>
+                        </button>
+                    @endunless
                 </div>
 
                 {{-- Tab Content --}}
@@ -110,7 +113,7 @@
                             </div>
                         </div>
 
-                        @if (!empty($project->metrics))
+                        @if (!empty($project->metrics) && !$project->isBlockHidden('metrics'))
                             <div>
                                 <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
                                     <span x-show="$store.lang.current === 'id'">Hasil &amp; Dampak Terukur</span>
@@ -135,7 +138,7 @@
                             <p class="text-sm text-slate-600 leading-relaxed">{{ $project->long_description }}</p>
                         </div>
 
-                        @if (!empty($project->highlights))
+                        @if (!empty($project->highlights) && !$project->isBlockHidden('highlights'))
                             <div class="space-y-2.5">
                                 <h4 class="text-sm font-bold text-slate-900">
                                     <span x-show="$store.lang.current === 'id'">Sorotan Fitur &amp; Inovasi</span>
@@ -156,7 +159,7 @@
                     {{-- Architecture Tab --}}
                     <div x-show="tab === 'architecture'" x-cloak class="space-y-6">
                         <div class="space-y-4">
-                            @if (!empty($project->tech_stack['frontend'] ?? []))
+                            @if (!empty($project->tech_stack['frontend'] ?? []) && !$project->isBlockHidden('tech_frontend'))
                                 <div>
                                     <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Frontend &amp; Client Stack</h4>
                                     <div class="flex flex-wrap gap-2">
@@ -167,7 +170,7 @@
                                 </div>
                             @endif
 
-                            @if (!empty($project->tech_stack['backend'] ?? []))
+                            @if (!empty($project->tech_stack['backend'] ?? []) && !$project->isBlockHidden('tech_backend'))
                                 <div>
                                     <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Backend &amp; API Services</h4>
                                     <div class="flex flex-wrap gap-2">
@@ -178,7 +181,7 @@
                                 </div>
                             @endif
 
-                            @if (!empty($project->tech_stack['database'] ?? []))
+                            @if (!empty($project->tech_stack['database'] ?? []) && !$project->isBlockHidden('tech_database'))
                                 <div>
                                     <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Database &amp; Caching Layer</h4>
                                     <div class="flex flex-wrap gap-2">
@@ -189,7 +192,7 @@
                                 </div>
                             @endif
 
-                            @if (!empty($project->tech_stack['cloudAndDevOps'] ?? []))
+                            @if (!empty($project->tech_stack['cloudAndDevOps'] ?? []) && !$project->isBlockHidden('tech_cloud'))
                                 <div>
                                     <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cloud, CI/CD &amp; Deployment</h4>
                                     <div class="flex flex-wrap gap-2">
@@ -203,6 +206,7 @@
                     </div>
 
                     {{-- Preview Tab --}}
+                    @unless ($project->isBlockHidden('tab_preview'))
                     <div x-show="tab === 'preview'" x-cloak class="space-y-4">
                         <div class="p-5 bg-slate-900 text-slate-200 rounded-2xl border border-slate-800 space-y-4">
                             <div class="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -236,6 +240,7 @@
                             </div>
                         </div>
                     </div>
+                    @endunless
                 </div>
 
                 {{-- Footer Action Strip --}}
