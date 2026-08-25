@@ -29,6 +29,114 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 30 — Audit & QA Penutup Fase 5 (selesai: 2026-08-25)
+Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten) TUNTAS SEPENUHNYA (Iterasi 24-30).**
+
+### Ringkasan
+Sesuai `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` bagian 4 Iterasi 30 — murni audit/QA, **TIDAK ADA PERUBAHAN KODE** (tidak ditemukan regresi nyata dari Iterasi 24-29). **Kondisi awal sesi**: `git status --short` menunjukkan perubahan Iterasi 29 (galeri multi-gambar) MASIH uncommitted (Iterasi 28 sudah di-commit user, `57d582d`) — tidak disentuh/direvert.
+
+**1) Audit state pristine sebelum uji** — dicek seluruh data Fase 5 via tinker: semua `display_settings` site-wide dalam kondisi default (`accent_preset=indigo`, `reveal_style=fade-up`, dst), semua project `hidden_blocks`/`gallery_images` kosong/null, tidak ada draft pending. **1 temuan di luar scope literal**: `maintenance_message_id`/`_en` ternyata berisi teks nyata ("maaf silahkan ditunggu"/"sorry") — BUKAN kosong seperti baseline akhir Iterasi 22 — dicek `maintenance_mode` tetap `0` (mati, tidak berdampak ke visitor), disimpulkan ini perubahan SENGAJA oleh user sendiri di luar sesi manapun (pola sama dgn insiden "maintenance_mode aktif tak terduga" yg dicatat di Iterasi 24) — **TIDAK disentuh/dianggap perlu "diperbaiki"**, karena ini kemungkinan konten yang memang ingin disiapkan user, bukan sampah tes.
+
+**2) Verifikasi bundle publik BERSIH dari Tiptap** — dicek langsung (bukan asumsi): `public/build/manifest.json` mengonfirmasi `public.js` (5.540 bytes) HANYA meng-import chunk `reveal.js` yang sama dgn `admin.js`, TIDAK ada dependency Tiptap. `grep -i "tiptap\|prosemirror"` terhadap file terkompilasi: 0 match di `public-*.js`, match banyak (diharapkan) di `admin-*.js` (374KB, berisi ProseMirror). Bukti definitif bundle admin/publik tetap terpisah sejak Iterasi 13 (Fase 3), tidak bocor meski Iterasi 27 menambah dependency besar.
+
+**3) Uji SATU SESI GABUNGAN — semua fitur Fase 5 aktif BERSAMAAN sekaligus** (bukan satu-satu terpisah), via `php artisan serve --port=8300` + `curl` sungguhan (SEMUA payload mutasi memakai data LENGKAP disalin dari state DB terkini, menerapkan pelajaran insiden Iterasi 28 — tidak ada data hilang di sesi ini), `storage/logs/laravel.log` dikosongkan sebelum sesi → 0 baris di akhir.
+
+Kombinasi diuji SEKALIGUS: preset warna aksen CUSTOM (`#0ea5e9`, fitur Iterasi 25) + gaya reveal-on-scroll `zoom-in` (Iterasi 26) — keduanya site-wide via draft/publish — DITUMPUK BERSAMA project `lumina-saas` dengan `hidden_blocks=['tech_database']` + 2 gambar galeri (Iterasi 28-29, direct-live) — DITUMPUK LAGI dengan 1 artikel blog baru berisi rich text (bold/italic/list/link aman + percobaan XSS via `<script>`, Iterasi 27).
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | Baseline: snapshot `/`, `/projects`, 5 halaman detail project SEBELUM apa pun disentuh | **LOLOS** — seluruhnya 200, disimpan sbg baseline byte-per-byte |
+| 2 | Verifikasi bundle: `public.js` vs `admin.js` | **LOLOS** — lihat Ringkasan poin 2 |
+| 3 | Draft+publish accent=custom(`#0ea5e9`) & reveal_style=zoom-in SEKALIGUS (1 sesi draft, 2 form, 1 publish) | **LOLOS** — DB: kedua setting live sesuai draft |
+| 4 | Update project 1: `hidden_blocks=['tech_database']` + 2 URL galeri, SEMUA field lain (tags/metrics/highlights/tech_stack/featured/dll) ikut disalin utuh dalam 1 payload | **LOLOS** — DB terkonfirmasi tepat sesuai input, TIDAK ADA field lain yg berubah/hilang (pelajaran Iterasi 28 diterapkan) |
+| 5 | Buat artikel blog baru dgn body rich text (bold/italic/list/link + `<script>` XSS) | **LOLOS** — tersimpan tersanitasi PERSIS sama pola yg diverifikasi Iterasi 27 (script terbuang, teks lain terformat lengkap) |
+| 6 | `GET /` — SEMUA 3 fitur (accent custom, reveal zoom-in, artikel blog baru) tampil BERSAMAAN dalam 1 response | **LOLOS** — `--accent-600: #0ea5e9;`, `data-reveal-style="zoom-in"`, judul artikel muncul (4x), 0 kemunculan `<script>alert` mentah, HTML rich text (`<strong>` dkk) ter-embed benar via `@json()` |
+| 7 | `GET /projects/lumina-saas` — accent custom + reveal_style (shared layout) + `tech_database` tersembunyi + tab Galeri muncul, SEMUA BERSAMAAN | **LOLOS** — accent & reveal_style konsisten dgn index, blok Database 0 kemunculan (blok lain tetap 1x), tab Galeri 1x — TIDAK ADA fitur yg saling menimpa/konflik |
+| 8 | Smoke-test 12 halaman admin (dashboard, 6 tab appearance, projects list+edit, blog, experience, testimonials) selagi kombinasi di atas aktif | **LOLOS** — semua 200 |
+| 9 | Restore SEMUA (site-wide draft+publish balik ke default, project 1 di-update ulang dgn payload lengkap TANPA `hidden_blocks`/`gallery_urls`, artikel uji dihapus via endpoint delete resmi) | **LOLOS** — DB: `accent_preset=indigo`, `reveal_style=fade-up`, project 1 `hidden_blocks=[]`/`gallery_images=[]`, `BlogPost::count()`=4 (kembali ke jumlah awal) |
+| 10 | **Regresi byte-per-byte FINAL**: `/`, `/projects`, SEMUA 5 halaman detail project — dibandingkan snapshot SEBELUM sesi Iterasi 30 dimulai | **LOLOS — IDENTIK di SEMUA 7 halaman** (`diff` exit code 0, minus token CSRF di `/`) |
+
+`storage/logs/laravel.log` bersih (0 baris) sepanjang SELURUH sesi (termasuk selama kombinasi 3 fitur aktif bersamaan). Server dimatikan di akhir (`taskkill` PID, dikonfirmasi request berikutnya `000`/connection refused).
+
+**Housekeeping**: `accent_custom_hex` (`display_settings`) masih menyimpan `#0ea5e9` (hex uji) meski `accent_preset` sudah kembali `indigo` — **BUKAN residu yang perlu dibersihkan**, ini persis perilaku yang SUDAH didokumentasikan sbg keputusan sadar di Iterasi 25 ("custom hex TIDAK dihapus saat admin pindah preset, supaya pilihan custom tidak hilang kalau nanti balik pilih Custom lagi") — dibiarkan apa adanya, konsisten dgn precedent.
+
+### File/area utama yang berubah
+- **TIDAK ADA** — murni audit/QA, tidak ditemukan regresi nyata dari Iterasi 24-29 (lihat Ringkasan poin 1-3), sesuai instruksi rencana "Tidak ada perubahan kode baru kecuali menemukan regresi nyata dari iterasi sebelumnya".
+- `docs/LOG-ITERASI.md` (entri ini) & `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` (status diubah jadi TUNTAS) — dokumentasi saja.
+
+### Migrasi & seeder dijalankan
+- Tidak ada — tidak ada perubahan kode/skema di iterasi ini.
+
+### Verifikasi
+Lihat tabel 10 skenario di Ringkasan poin 3 — **SEMUA LOLOS**, termasuk uji SATU sesi gabungan (bukan satu-satu terpisah) mencakup SEMUA 6 fitur Fase 5 (playground removal tersirat via absennya menu, custom color, animation style, rich text blog, project layout+hide/unhide, galeri) aktif bersamaan tanpa saling konflik, verifikasi bundle publik bebas Tiptap, dan regresi byte-per-byte identik di 7 halaman publik dibanding snapshot awal sesi. `storage/logs/laravel.log` bersih sepanjang sesi.
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user (meski tidak ada perubahan kode, entri dokumentasi ini + update status `RENCANA-PENYEMPURNAAN-ADMIN.md` tetap perlu di-commit).
+
+### Catatan untuk review
+- **Fase 5 (Iterasi 24-30) TUNTAS SEPENUHNYA** — 6 permintaan asli user (playground removal, preset warna interaktif+custom, gaya animasi banyak pilihan, rich text editor blog, redesain layout admin Projects+hide/unhide, galeri multi-gambar) semuanya dibangun, diuji bersamaan dalam 1 sesi gabungan tanpa konflik, dan regresi byte-per-byte terbukti identik dgn baseline sebelum Fase 5 di kondisi default.
+- **2 bug/insiden NYATA ditemukan & diperbaiki SEPANJANG Fase 5** (dicatat ulang di sini sbg ringkasan, detail lengkap ada di entri iterasi masing-masing): (a) Iterasi 27 — `RangeError: Applying a mismatched transaction` dari Alpine me-reactive-kan instance Tiptap, diperbaiki dgn closure variable; (b) Iterasi 28 — kesalahan METODOLOGI UJI (bukan bug kode) saat payload curl parsial menghapus data project via logic `?? []` yg SUDAH ADA sejak Fase 1. Keduanya HANYA ketahuan krn verifikasi memakai browser sungguhan/payload realistis, bukan asumsi — pola ini dipertahankan konsisten di Iterasi 29-30.
+- **Rekomendasi utk pekerjaan pasca-Fase 5** (bukan tugas Iterasi 30, murni observasi): drift `sort_order` (`skills` vs section top-level, dicatat sejak Iterasi 20/23) masih berpotensi terulang; `accent_custom_hex` bisa "menua" tanpa mekanisme pembersihan (kosmetik, sudah didokumentasikan sbg trade-off sadar).
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai instruksi user (commit manual).
+
+---
+
+## Iterasi 29 — Projects: Galeri Multi-Gambar (selesai: 2026-08-25)
+Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan Iterasi 24-28. Iterasi TERAKHIR sebelum Iterasi 30 (Audit & QA Penutup Fase 5).**
+
+### Ringkasan
+Sesuai `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` bagian 4 Iterasi 29. **Kondisi awal sesi**: `git status --short` menunjukkan perubahan Iterasi 28 (redesain form Projects + hide/unhide) MASIH uncommitted — tidak disentuh/direvert, pekerjaan sesi ini ditumpuk di atasnya.
+
+**1) Skema — kolom baru** `projects.gallery_images` (JSON, nullable) via migrasi `2026_08_25_173512_add_gallery_images_to_projects_table.php` — array URL gambar galeri opsional per project. Pola JSON array sederhana, SAMA persis `tags`/`hidden_blocks` (BUKAN tabel relasi `project_images` dgn FK) — konsisten preferensi arsitektur project ini utk data array kecil. NULL/kosong = tidak ada galeri (100% backward compatible). Direct-live (sama seperti `hidden_blocks` Iterasi 28). `docs/ERD.md` diupdate.
+
+**2) Admin — repeater galeri di tab "Simulasi Interaktif"** (sesuai rencana "Demo URL/Galeri masuk tab Preview") — pola SAMA Tags/Highlights (tambah/hapus baris via Alpine), tapi tiap baris punya 2 cara isi SEKALIGUS (URL teks ATAU upload file, sama pola pilihan `image_url`/`image_file` Gambar Banner) — thumbnail preview live update via `URL.createObjectURL()` saat file dipilih (sama pola `imagePreview` banner, terbukti reaktif saat diuji browser sungguhan). `Admin\ProjectController::resolveGalleryImages()` (method baru): file MENANG kalau file & URL sama-sama terisi di baris yg sama (pola sama `resolveImage()`), baris kosong (keduanya kosong) dilewati begitu saja — TIDAK ada fallback ke "nilai lama" krn form SELALU mengirim ulang SEMUA baris existing (pre-filled), beda dari `resolveImage()` yg memang butuh fallback (cuma 1 field, bisa "tidak disentuh sama sekali" scr struktural).
+
+**3) Publik — tab BARU "Galeri"** (`projects/show.blade.php`, 4th tab setelah Overview/Architecture/Preview) — HANYA muncul kalau `gallery_images` tidak kosong (pola `@if` sama blok opsional lain, TAPI beda dari `hidden_blocks`: galeri TIDAK punya toggle hide/unhide terpisah — "kosongkan semua baris di admin" SUDAH cukup utk menyembunyikannya scr alami, sesuai keputusan "in-band" bukan "out-of-band control"). Grid thumbnail (2/3 kolom responsif) + **lightbox sederhana** (Alpine `x-data` LOKAL scope ke blok galeri saja — `lightboxIndex`/`images` via `@js()`, navigasi prev/next dgn wrap-around modulo, `Escape` & panah keyboard, klik backdrop utk tutup) — **TANPA library carousel baru**, sesuai batasan rencana.
+
+**4) Verifikasi end-to-end** — `php artisan serve --port=8290` + `curl` (baca-saja & validasi, dgn PELAJARAN dari insiden Iterasi 28 diterapkan penuh: SEMUA payload curl yang mutasi data memakai payload LENGKAP disalin dari state DB terkini via tinker, TIDAK PERNAH parsial) DAN **browser sungguhan** (claude-in-chrome — submit form asli utk SEMUA skenario tambah/hapus/upload gambar, termasuk **upload file sungguhan** via `file_upload` tool, bukan cuma URL teks), `storage/logs/laravel.log` dikosongkan sebelum sesi → 0 baris di akhir.
+
+**Catatan teknis non-aplikasi**: percobaan awal uji file-upload via `curl -F "gallery_files[0]=@path"` gagal (`curl: (26) Failed to open/read local data`) — diisolasi & dikonfirmasi (uji A/B dgn & tanpa `[0]`) bahwa sintaks nama field ber-`[index]` bareng `@` memicu bug/quirk parsing di build curl mingw64 lingkungan ini (BUKAN masalah di sisi Laravel/aplikasi — endpoint yg sama menerima file dgn benar begitu diuji lewat browser sungguhan). Diselesaikan dgn pindah ke uji upload via browser (`mcp__claude-in-chrome__file_upload`, file test disalin ke scratchpad session krn tool itu membatasi path yg boleh diakses) — sekalian jadi uji yang lebih realistis drpd curl.
+
+| # | Skenario | Metode | Hasil |
+|---|---|---|---|
+| 1 | Baseline `GET /projects/lumina-saas` — 0 tab "Galeri" (belum ada galeri) | curl | **LOLOS** |
+| 2 | `GET /admin/projects/1/edit` — blok "Galeri Gambar" + tombol "Tambah Gambar" ada | curl | **LOLOS** |
+| 3 | **Browser**: klik tab "Simulasi Interaktif" → "Tambah Gambar" 3x → isi 3 URL (thumbnail live update tiap ketik, screenshot dikonfirmasi) → "Simpan Perubahan" (form ASLI) | claude-in-chrome | **LOLOS** — flash "Project berhasil diperbarui"; DB (tinker): `gallery_images` = 3 URL persis yg diketik, SEMUA field lain (`tags`/`hidden_blocks`/`featured`/`tech_stack.database`) UTUH — pelajaran Iterasi 28 berhasil dihindari |
+| 4 | `GET /projects/lumina-saas` (browser) → tab "Galeri" muncul, klik → grid 3 thumbnail | claude-in-chrome | **LOLOS** (screenshot) |
+| 5 | Klik thumbnail 1 → lightbox terbuka "1 / 3" → klik panah kanan → "2 / 3" → `Escape` → lightbox tertutup, balik ke grid | claude-in-chrome | **LOLOS** (screenshot tiap langkah), 0 console error |
+| 6 | **Browser**: hapus 3 baris galeri via tombol X satu-satu → "Simpan Perubahan" | claude-in-chrome | **LOLOS** — `gallery_images=[]`; `GET /projects/lumina-saas`: tab "Galeri" hilang lagi, byte-per-byte identik baseline #1 |
+| 7 | **Browser**: upload file sungguhan (`file_upload` tool, PNG 1x1) ke baris galeri baru → thumbnail merah muncul (preview blob: URL) → simpan | claude-in-chrome | **LOLOS** — DB: `gallery_images=["/storage/projects/gallery/<hash>.png"]` (URL storage ASLI, BUKAN blob: placeholder — priority file-over-url terbukti benar); file fisik terverifikasi ada di `storage/app/public/projects/gallery/`; `GET /storage/projects/gallery/<hash>.png` → 200 (publicly accessible); halaman publik merujuk path yang sama |
+| 8 | **Browser**: hapus baris upload tsb → simpan (restore) | claude-in-chrome | **LOLOS** — `gallery_images=[]`; file fisik dihapus manual (housekeeping, lihat catatan) |
+| 9 | Regresi byte-per-byte final `GET /projects/lumina-saas` vs baseline #1 | curl | **LOLOS — IDENTIK** |
+| 10 | Submit `gallery_files` berisi file NON-gambar (.txt) | curl (payload lengkap) | **LOLOS** — validasi gagal (`image` rule), tidak ada perubahan tersimpan |
+| 11 | Regresi: smoke-test 8 halaman admin, `GET /`, `/projects`, SEMUA 5 halaman detail project | curl | **LOLOS** — semua 200 |
+
+`storage/logs/laravel.log` bersih (0 baris) sepanjang sesi. Server dimatikan di akhir.
+
+### File/area utama yang berubah
+- **Migrasi baru**: `database/migrations/2026_08_25_173512_add_gallery_images_to_projects_table.php`.
+- **Model diubah**: `app/Models/Project.php` — `gallery_images` masuk `$fillable`/`$casts` (array).
+- **Controller diubah**: `app/Http/Controllers/Admin/ProjectController.php` — validasi `gallery_urls`/`gallery_files` baru, `store()`/`update()` panggil method baru `resolveGalleryImages()`.
+- **View diubah**: `resources/views/admin/projects/form.blade.php` (repeater galeri baru di tab Preview), `resources/views/projects/show.blade.php` (tab BARU "Galeri" + lightbox, tombol tab & konten dibungkus `@if` yang SAMA).
+- **Dokumentasi**: `docs/ERD.md` diupdate (kolom baru di tabel `PROJECTS` + entri riwayat) — skema BERUBAH di iterasi ini.
+
+### Migrasi & seeder dijalankan
+- `php artisan migrate` — 1 migrasi baru (`add_gallery_images_to_projects_table`) sukses.
+
+### Verifikasi
+Lihat tabel 11 skenario di Ringkasan poin 4 — **SEMUA LOLOS**, termasuk uji upload file SUNGGUHAN via browser (bukan cuma URL teks) yang mengonfirmasi jalur `Storage::store()` bekerja benar end-to-end (file fisik tersimpan, URL publik benar, dapat diakses). `storage/logs/laravel.log` bersih sepanjang sesi. Regresi publik/admin hijau, byte-per-byte identik baseline.
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user.
+
+### Catatan untuk review
+- **Galeri TIDAK punya toggle hide/unhide terpisah** (beda dari 7 blok `hidden_blocks` Iterasi 28) — keputusan sadar: mengosongkan semua baris repeater SUDAH cukup natural utk "menyembunyikan" galeri (tab otomatis hilang), menambah toggle terpisah lagi di atas itu akan jadi 2 cara berbeda melakukan hal yang sama (kosongkan array VS toggle switch) utk 1 hasil akhir yang identik.
+- **Kuirk curl mingw64 dgn field ber-bracket + upload file** (lihat Ringkasan) — dicatat murni sbg referensi tooling utk sesi mendatang: kalau perlu uji upload file ke field array (`nama[index]`) via curl CLI di lingkungan Windows/Git-Bash ini, JANGAN pakai syntax `-F "field[i]=@path"` langsung — uji lewat browser (`file_upload` tool) alih-alih debugging syntax curl lebih lanjut, sudah terbukti jauh lebih cepat & lebih realistis.
+- **Housekeeping**: 1 file test upload (`storage/app/public/projects/gallery/*.png`) dihapus manual di akhir sesi — pola sama persis housekeeping test-upload di Iterasi 19 (logo) & Iterasi 27 (avatar test post, walau itu dihapus via endpoint delete, bukan file manual).
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai instruksi user (commit manual).
+
+---
+
 ## Iterasi 28 — Projects: Redesain Layout Admin (Mirip Halaman Publik) + Hide/Unhide Blok (selesai: 2026-08-25)
 Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan Iterasi 24-27.**
 

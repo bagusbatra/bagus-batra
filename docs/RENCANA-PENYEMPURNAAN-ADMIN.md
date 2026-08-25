@@ -1,6 +1,6 @@
 # Rencana Pengembangan — Penyempurnaan Admin & Konten (Fase 5)
 
-Status: **Draft — menunggu review sebelum Iterasi 24 dieksekusi. TIDAK ADA COMMIT OTOMATIS (sama seperti Fase 3 & 4).**
+Status: **TUNTAS — Fase 5 (Iterasi 24-30) selesai sepenuhnya per 2026-08-25.** Penghapusan menu Playground, preset warna aksen interaktif + custom color picker, gaya reveal-on-scroll (banyak pilihan), rich text editor Tiptap untuk Blog, redesain layout admin Projects + hide/unhide blok, dan galeri multi-gambar Projects — seluruhnya dibangun & terverifikasi. Lihat entri "Iterasi 30 — Audit & QA Penutup Fase 5" di `docs/LOG-ITERASI.md` untuk ringkasan hasil audit gabungan akhir (semua fitur diuji bersamaan dalam 1 sesi, verifikasi bundle publik bebas Tiptap, regresi byte-per-byte identik, tidak ada perubahan kode di Iterasi 30). TIDAK ADA COMMIT OTOMATIS dijalankan di seluruh Fase 5 (lihat bagian 2) — tiap iterasi di-commit manual oleh user setelah selesai.
 Dibuat: 2026-08-25
 
 ## 1. Tujuan

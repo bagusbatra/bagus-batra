@@ -88,6 +88,21 @@
                             <span x-show="$store.lang.current === 'en'" x-cloak>Live Preview</span>
                         </button>
                     @endunless
+                    {{--
+                        Iterasi 29 (Fase 5): tab "Galeri" HANYA muncul kalau
+                        `gallery_images` tidak kosong (pola @if sama dgn
+                        blok opsional lain, BUKAN hidden_blocks — galeri
+                        tidak punya toggle hide/unhide terpisah, "kosongkan
+                        semua baris di admin" SUDAH cukup utk
+                        menyembunyikannya, lihat
+                        admin/projects/form.blade.php).
+                    --}}
+                    @if (!empty($project->gallery_images))
+                        <button id="tab-gallery" @click="tab = 'gallery'" class="px-4 py-2.5 text-xs font-bold rounded-t-xl transition-colors cursor-pointer shrink-0" :class="tab === 'gallery' ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-2xs' : 'text-slate-500 hover:text-slate-900'">
+                            <span x-show="$store.lang.current === 'id'">Galeri</span>
+                            <span x-show="$store.lang.current === 'en'" x-cloak>Gallery</span>
+                        </button>
+                    @endif
                 </div>
 
                 {{-- Tab Content --}}
@@ -241,6 +256,72 @@
                         </div>
                     </div>
                     @endunless
+
+                    {{--
+                        Gallery Tab — Iterasi 29 (Fase 5). Grid thumbnail +
+                        lightbox sederhana, x-data LOKAL (scope ke blok ini
+                        saja, TIDAK mencemari x-data "tab" milik parent) —
+                        `images` di-embed sekali via @js() supaya navigasi
+                        prev/next lightbox murni client-side (tidak perlu
+                        query ulang/reload). TANPA library carousel baru,
+                        sesuai docs/RENCANA-PENYEMPURNAAN-ADMIN.md bagian 3
+                        baris "Projects — galeri multi-gambar".
+                    --}}
+                    @if (!empty($project->gallery_images))
+                        <div x-show="tab === 'gallery'" x-cloak x-data="{ lightboxIndex: null, images: @js($project->gallery_images) }" class="space-y-4">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                @foreach ($project->gallery_images as $i => $img)
+                                    <button
+                                        type="button"
+                                        @click="lightboxIndex = {{ $i }}"
+                                        class="relative h-28 sm:h-32 rounded-xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-2xs group cursor-pointer"
+                                    >
+                                        <img
+                                            src="{{ $img }}"
+                                            alt="{{ $project->title }} — galeri {{ $i + 1 }}"
+                                            onerror="this.onerror=null;this.src='https://placehold.co/400x300/e2e8f0/64748b?text=No+Image';"
+                                            width="400"
+                                            height="300"
+                                            loading="lazy"
+                                            decoding="async"
+                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                    </button>
+                                @endforeach
+                            </div>
+
+                            {{-- Lightbox --}}
+                            <div
+                                x-show="lightboxIndex !== null"
+                                x-cloak
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0"
+                                x-transition:enter-end="opacity-100"
+                                @click="lightboxIndex = null"
+                                @keydown.escape.window="lightboxIndex = null"
+                                @keydown.arrow-left.window="if (lightboxIndex !== null) lightboxIndex = (lightboxIndex - 1 + images.length) % images.length"
+                                @keydown.arrow-right.window="if (lightboxIndex !== null) lightboxIndex = (lightboxIndex + 1) % images.length"
+                                class="fixed inset-0 z-[70] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8"
+                                style="display: none;"
+                            >
+                                <button @click.stop="lightboxIndex = null" class="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer" aria-label="Tutup">
+                                    <x-icon name="x" class="w-5 h-5" />
+                                </button>
+                                <button @click.stop="lightboxIndex = (lightboxIndex - 1 + images.length) % images.length" x-show="images.length > 1" class="absolute left-3 sm:left-6 p-2.5 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer" aria-label="Sebelumnya">
+                                    <x-icon name="arrow-left" class="w-5 h-5" />
+                                </button>
+                                <img
+                                    :src="lightboxIndex !== null ? images[lightboxIndex] : ''"
+                                    @click.stop
+                                    class="max-h-[80vh] max-w-[88vw] object-contain rounded-2xl shadow-2xl"
+                                />
+                                <button @click.stop="lightboxIndex = (lightboxIndex + 1) % images.length" x-show="images.length > 1" class="absolute right-3 sm:right-6 p-2.5 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer" aria-label="Berikutnya">
+                                    <x-icon name="arrow-right" class="w-5 h-5" />
+                                </button>
+                                <span class="absolute bottom-4 sm:bottom-6 text-xs font-mono text-white/70" x-text="(lightboxIndex + 1) + ' / ' + images.length"></span>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Footer Action Strip --}}

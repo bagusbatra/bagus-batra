@@ -15,6 +15,13 @@
             'highlights' => old('highlights', $project->highlights ?? []),
             'metrics' => old('metrics', $project->metrics ?? []),
             'techStack' => old('tech_stack', $project->tech_stack ?? []),
+            // Iterasi 29 (Fase 5): tiap item galeri direpresentasikan sbg
+            // { preview: 'url' } (bukan array string polos spt tags) supaya
+            // struktur objeknya konsisten dgn kebutuhan preview gambar —
+            // "preview" diperbarui client-side saat admin pilih file baru
+            // (sama pola imagePreview banner), atau tetap URL existing kalau
+            // tidak disentuh.
+            'gallery' => array_map(fn ($url) => ['preview' => $url], old('gallery_urls', $project->gallery_images ?? [])),
         ];
         $hidden = old('hidden_blocks', $project->hidden_blocks ?? []);
     @endphp
@@ -78,6 +85,7 @@
                 cloudAndDevOps: @js($initial['techStack']['cloudAndDevOps'] ?? []),
             },
             accentColor: @js(old('accent_color', $project->accent_color ?: '#3b82f6')),
+            gallery: @js($initial['gallery']),
         }"
     >
         @csrf
@@ -328,6 +336,46 @@
                 <label class="block text-xs font-bold text-slate-800">Demo URL</label>
                 <input type="text" name="demo_url" value="{{ old('demo_url', $project->demo_url) }}" placeholder="https://..." class="w-full px-4 py-2.5 bg-white/70 backdrop-blur-md rounded-xl border border-white/90 text-sm text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs transition-colors" />
                 @error('demo_url') <p class="text-[11px] text-rose-600 font-semibold">{{ $message }}</p> @enderror
+            </div>
+
+            {{--
+                Iterasi 29 (Fase 5) — Galeri multi-gambar. Repeater sama pola
+                Tags/Highlights (tambah/hapus baris), tapi tiap baris punya 2
+                cara isi (URL teks ATAU upload file, sama pilihan dgn Gambar
+                Banner) — lihat Admin\ProjectController::resolveGalleryImages().
+                Muncul sbg tab BARU "Galeri" di halaman publik (HANYA kalau
+                array ini tidak kosong, pola @if sama dgn blok opsional
+                lain) — lihat resources/views/projects/show.blade.php.
+            --}}
+            <div class="border-t border-slate-200/70 pt-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2"><x-icon name="image" class="w-4 h-4 text-indigo-600" /> Galeri Gambar</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Tambahkan beberapa gambar untuk tab "Galeri" di halaman detail publik. Kosongkan semua baris untuk menyembunyikan tab ini.</p>
+                    </div>
+                    <button type="button" @click="gallery.push({ preview: '' })" class="shrink-0 text-xs font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1 cursor-pointer">
+                        <x-icon name="sparkles" class="w-3.5 h-3.5" /> Tambah Gambar
+                    </button>
+                </div>
+                <p class="text-xs text-slate-400" x-show="gallery.length === 0">Belum ada gambar galeri. Klik "Tambah Gambar".</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <template x-for="(item, index) in gallery" :key="index">
+                        <div class="p-3 rounded-2xl border border-white/90 bg-white/70 backdrop-blur-md space-y-2.5">
+                            <div class="flex items-start gap-2.5">
+                                <img :src="item.preview || 'https://placehold.co/96x64?text=%3F'" alt="" width="96" height="64" loading="lazy" decoding="async" class="w-24 h-16 rounded-lg object-cover border border-white/90 shadow-2xs bg-slate-100 shrink-0" />
+                                <div class="flex-1 min-w-0 space-y-1.5">
+                                    <input type="text" :name="`gallery_urls[${index}]`" x-model="item.preview" placeholder="URL gambar" class="w-full px-3 py-1.5 bg-white/80 backdrop-blur-md rounded-lg border border-white/90 text-xs text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs transition-colors" />
+                                    <input type="file" :name="`gallery_files[${index}]`" accept="image/*" @change="if ($event.target.files[0]) item.preview = URL.createObjectURL($event.target.files[0])" class="w-full text-[11px] text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:cursor-pointer cursor-pointer" />
+                                </div>
+                                <button type="button" @click="gallery.splice(index, 1)" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50/80 rounded-lg transition-colors cursor-pointer shrink-0">
+                                    <x-icon name="x" class="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                @error('gallery_urls.*') <p class="text-[11px] text-rose-600 font-semibold">{{ $message }}</p> @enderror
+                @error('gallery_files.*') <p class="text-[11px] text-rose-600 font-semibold">{{ $message }}</p> @enderror
             </div>
         </div>
 

@@ -28,6 +28,7 @@ class Project extends Model
         'accent_color',
         'sort_order',
         'hidden_blocks',
+        'gallery_images',
     ];
 
     protected $casts = [
@@ -37,6 +38,7 @@ class Project extends Model
         'tech_stack' => 'array',
         'featured' => 'boolean',
         'hidden_blocks' => 'array',
+        'gallery_images' => 'array',
     ];
 
     /**

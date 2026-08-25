@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -76,6 +77,7 @@ class ProjectController extends Controller
         $data['project_key'] = $this->uniqueKey($data['title']);
         $data['sort_order'] = (int) (Project::max('sort_order') ?? -1) + 1;
         $data['image'] = $this->resolveImage($request, null);
+        $data['gallery_images'] = $this->resolveGalleryImages($request);
 
         Project::create($data);
 
@@ -97,6 +99,7 @@ class ProjectController extends Controller
         // project_key is intentionally immutable after creation — it's the
         // stable business key referenced in DOM ids / URLs (see docs/ERD.md).
         $data['image'] = $this->resolveImage($request, $project->image);
+        $data['gallery_images'] = $this->resolveGalleryImages($request);
 
         $project->update($data);
 
@@ -165,6 +168,10 @@ class ProjectController extends Controller
             'accent_color' => ['nullable', 'string', 'max:20'],
             'hidden_blocks' => ['nullable', 'array'],
             'hidden_blocks.*' => ['string', Rule::in(array_keys(self::HIDEABLE_BLOCKS))],
+            'gallery_urls' => ['nullable', 'array'],
+            'gallery_urls.*' => ['nullable', 'string', 'max:2048'],
+            'gallery_files' => ['nullable', 'array'],
+            'gallery_files.*' => ['nullable', 'image', 'max:4096'],
         ]);
 
         $data['featured'] = $request->boolean('featured');
@@ -188,7 +195,7 @@ class ProjectController extends Controller
         }
         $data['tech_stack'] = $techStack;
 
-        unset($data['image_url'], $data['image_file']);
+        unset($data['image_url'], $data['image_file'], $data['gallery_urls'], $data['gallery_files']);
 
         return $data;
     }
@@ -204,6 +211,36 @@ class ProjectController extends Controller
         }
 
         return $current;
+    }
+
+    /**
+     * Iterasi 29 (Fase 5) — resolusi galeri multi-gambar, 1 baris repeater
+     * bisa berupa URL teks ATAU file upload (sama pola pilihan `image_url`
+     * vs `image_file` di resolveImage(), tapi per-baris & jamak). File
+     * MENANG kalau keduanya terisi di baris yang sama (pola sama
+     * resolveImage()). Baris kosong (tidak ada file MAUPUN url) dilewati —
+     * TIDAK ada fallback ke "nilai lama" spt resolveImage(): form repeater
+     * ini SELALU mengirim ulang SEMUA baris existing (pre-filled sbg URL
+     * teks, sama pola Tags/Highlights), jadi "kosong" di sini murni berarti
+     * admin sengaja menghapus baris itu.
+     */
+    private function resolveGalleryImages(Request $request): array
+    {
+        $urls = $request->input('gallery_urls', []);
+        $files = $request->file('gallery_files', []);
+
+        $result = [];
+        foreach ($urls as $index => $url) {
+            $file = $files[$index] ?? null;
+
+            if ($file instanceof UploadedFile && $file->isValid()) {
+                $result[] = Storage::url($file->store('projects/gallery', 'public'));
+            } elseif (filled($url)) {
+                $result[] = $url;
+            }
+        }
+
+        return array_values($result);
     }
 
     private function uniqueKey(string $title): string
