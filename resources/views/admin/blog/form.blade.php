@@ -176,7 +176,61 @@
                         </div>
 
                         <input type="text" :name="`sections[${index}][heading]`" x-model="section.heading" placeholder="Heading bagian" class="w-full px-3.5 py-2 bg-white/80 backdrop-blur-md rounded-xl border border-white/90 text-sm font-bold text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs transition-colors" />
-                        <textarea :name="`sections[${index}][body]`" x-model="section.body" rows="3" placeholder="Isi paragraf bagian ini" class="w-full px-3.5 py-2 bg-white/80 backdrop-blur-md rounded-xl border border-white/90 text-sm text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs transition-colors resize-none"></textarea>
+
+                        {{--
+                            Iterasi 27 (Fase 5) — rich text editor (Tiptap)
+                            menggantikan textarea polos utk `body`. Lihat
+                            Alpine.data('richTextEditor', ...) di
+                            resources/js/admin.js utk penjelasan lengkap
+                            (kenapa 1 instance per section, kenapa `tick`,
+                            dst). Hidden input `:value="section.body"` yang
+                            benar2 terkirim saat submit — bukan textarea
+                            atau elemen Tiptap (contenteditable TIDAK ikut
+                            SUBMIT form HTML native), disinkronkan tiap
+                            ketikan lewat onUpdate() di JS.
+                        --}}
+                        {{-- init()/destroy() dipanggil OTOMATIS oleh Alpine (konvensi bawaan reactiveData, tidak butuh x-init/x-destroy eksplisit). --}}
+                        <div x-data="richTextEditor(section)">
+                            <div class="flex flex-wrap items-center gap-1 p-1.5 bg-white/90 backdrop-blur-md border border-white/90 border-b-0 rounded-t-xl">
+                                @php
+                                    $rtButtons = [
+                                        ['icon' => 'bold', 'title' => 'Tebal', 'mark' => 'bold', 'cmd' => 'toggleBold'],
+                                        ['icon' => 'italic', 'title' => 'Miring', 'mark' => 'italic', 'cmd' => 'toggleItalic'],
+                                        ['icon' => 'underline', 'title' => 'Garis Bawah', 'mark' => 'underline', 'cmd' => 'toggleUnderline'],
+                                        ['icon' => 'code2', 'title' => 'Kode Inline', 'mark' => 'code', 'cmd' => 'toggleCode'],
+                                        ['icon' => 'list', 'title' => 'Daftar Poin', 'mark' => 'bulletList', 'cmd' => 'toggleBulletList'],
+                                        ['icon' => 'list-ordered', 'title' => 'Daftar Bernomor', 'mark' => 'orderedList', 'cmd' => 'toggleOrderedList'],
+                                        ['icon' => 'quote', 'title' => 'Kutipan', 'mark' => 'blockquote', 'cmd' => 'toggleBlockquote'],
+                                    ];
+                                @endphp
+                                @foreach ($rtButtons as $btn)
+                                    <button
+                                        type="button"
+                                        @click="run(c => c.{{ $btn['cmd'] }}().run())"
+                                        :class="isActive('{{ $btn['mark'] }}') ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:bg-slate-100'"
+                                        class="p-1.5 rounded-lg transition-colors cursor-pointer"
+                                        title="{{ $btn['title'] }}"
+                                    >
+                                        <x-icon name="{{ $btn['icon'] }}" class="w-3.5 h-3.5" />
+                                    </button>
+                                @endforeach
+                                <button
+                                    type="button"
+                                    @click="setLink()"
+                                    :class="isActive('link') ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:bg-slate-100'"
+                                    class="p-1.5 rounded-lg transition-colors cursor-pointer"
+                                    title="Tautan"
+                                >
+                                    <x-icon name="link" class="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                            {{-- Kelas format (.rich-content, min-h, padding) di-set LEWAT JS
+                                 (editorProps.attributes.class di Alpine.data('richTextEditor', ...))
+                                 langsung ke elemen contenteditable yg Tiptap kelola sendiri di
+                                 dalam sini — bukan di wrapper div ini. --}}
+                            <div x-ref="editorEl" class="bg-white/80 backdrop-blur-md rounded-b-xl border border-white/90"></div>
+                            <input type="hidden" :name="`sections[${index}][body]`" :value="section.body" />
+                        </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                             <input type="text" :name="`sections[${index}][code_language]`" x-model="section.code_language" placeholder="Bahasa (opsional, mis. tsx)" class="px-3.5 py-2 bg-white/80 backdrop-blur-md rounded-xl border border-white/90 text-xs font-mono text-slate-800 focus:bg-white focus:outline-indigo-500 shadow-2xs transition-colors" />

@@ -111,7 +111,21 @@
                     <template x-for="(sec, idx) in $store.ui.activeArticle.sections" :key="idx">
                         <div class="space-y-3.5">
                             <h3 x-show="sec.heading" class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight pt-2" x-text="sec.heading"></h3>
-                            <p class="text-slate-600 leading-relaxed" x-text="sec.body"></p>
+                            {{--
+                                Iterasi 27 (Fase 5): x-text -> x-html — SATU-SATUNYA
+                                tempat di seluruh codebase yang merender HTML mentah
+                                (bukan escape sbg teks) dari data. `sec.body` sudah
+                                disaring server-side lewat App\Support\RichText::sanitize()
+                                SEBELUM disimpan ke DB (lihat
+                                Admin\BlogPostController@validated()) — whitelist tag
+                                ketat (p/strong/em/u/ul/ol/li/a/blockquote/code/br),
+                                SEMUA atribut selain href di <a> dibuang, href divalidasi
+                                (hanya http/https/path relatif). `.rich-content` (kelas
+                                sama dgn editor Tiptap di admin, resources/css/app.css)
+                                supaya format visual di sini identik dgn yang admin lihat
+                                saat mengetik.
+                            --}}
+                            <div class="rich-content text-slate-600 leading-relaxed" x-html="sec.body"></div>
 
                             {{-- Code Snippet Block --}}
                             <div x-show="sec.codeSnippet" class="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-md">

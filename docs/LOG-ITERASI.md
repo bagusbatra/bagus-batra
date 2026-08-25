@@ -29,6 +29,72 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 27 — Blog: Rich Text Editor (Tiptap) (selesai: 2026-08-25)
+Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan Iterasi 24-26.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` bagian 4 Iterasi 27. **Kondisi awal sesi**: `git status --short` **BERSIH**, `git log` mengonfirmasi commit terakhir `06f8741` ("Implement reveal-on-scroll animation styles with admin selection", Iterasi 26) sudah ter-commit user.
+
+**1) Skema data — TIDAK berubah** (`blog_posts.sections` TETAP JSON array `{heading, body, codeSnippet?, tip?}`, struktur existing sejak Fase 1) — HANYA field `body` yang berubah ISI-nya (plain text → HTML), keputusan sadar sesuai rencana: `codeSnippet`/`tip` TETAP field terpisah (bukan dilebur jadi node editor), krn sudah punya peran visual sendiri (code block bergaya terminal, callout box kuning) yang tidak natural jadi bagian alur prosa.
+
+**2) Instalasi Tiptap** (`@tiptap/core` + `@tiptap/starter-kit`, v3) — **pengecualian sadar** dari kebiasaan "hindari dependency baru" yang dipegang ketat di Fase 4 (reorder drag-drop sengaja native) — rich text editing beneran butuh editor engine, contenteditable mentah tidak reliable lintas-browser. `@tiptap/extension-underline`/`@tiptap/extension-link` SEMPAT diinstal terpisah lalu **di-uninstall** setelah ditemukan StarterKit v3 SUDAH membundel keduanya secara default (dicek langsung source `node_modules/@tiptap/starter-kit/src/starter-kit.ts`) — package eksplisit jadi redundan. Diimpor HANYA di `resources/js/admin.js` (bundle admin, Iterasi 13 Fase 3 sudah memisahkan bundle admin vs publik) — dikonfirmasi `public-*.js` tetap 5.54 kB (byte-identik dgn sebelum Iterasi 27), `admin-*.js` melonjak dari ~1 kB ke 374 kB (118 kB gzip, ProseMirror ikut terbundel) — TIDAK ADA byte tambahan ke pengunjung situs publik.
+
+**3) `Alpine.data('richTextEditor', ...)`** (`resources/js/admin.js`) — 1 instance Tiptap PER section (form Blog punya repeater dinamis), dipasang `x-data="richTextEditor(section)"` di dalam `x-for`. StarterKit dikonfigurasi MATIKAN `heading`/`codeBlock`/`strike`/`horizontalRule` (heading & codeBlock krn field terpisah sudah ada di section yang sama — 2 cara berbeda membuat hal yg sama akan membingungkan; strike & horizontalRule di luar scope literal). Toolbar 8 tombol: Bold/Italic/Underline/Kode-inline/Bullet-List/Ordered-List/Blockquote/Link (6 icon baru ditambah ke `components/icon.blade.php`, `code2` yg sudah ada dipakai ulang utk kode-inline).
+
+**4) BUG NYATA ditemukan & diperbaiki saat verifikasi browser SUNGGUHAN** (bukan cuma curl — curl tidak menjalankan JS sama sekali, jadi bug ini TIDAK akan pernah ketahuan tanpa uji browser): `RangeError: Applying a mismatched transaction` muncul di console SETIAP kali tombol toolbar diklik (mis. toggle Bold). **Root cause**: instance `Editor` Tiptap sempat disimpan sbg `this.editor` — properti biasa di objek yang dikembalikan `Alpine.data()` — Alpine otomatis membuat SEMUA properti begitu jadi reaktif (deep-proxy), termasuk instance ProseMirror internal Tiptap (state/view) yang jadi ikut terbungkus Proxy Alpine. ProseMirror melakukan pengecekan identitas referensi ketat (`transaction.startState === view.state`) saat dispatch — dibungkus Proxy merusak pengecekan itu. **Solusi**: instance `Editor` dipindah ke variabel closure `editor` DI LUAR objek yang di-return (Alpine hanya membuat properti pada objek yang di-return jadi reaktif, variabel closure biasa tidak pernah disentuh sistem reaktivitasnya). Setelah perbaikan, diverifikasi ULANG di browser sungguhan: toggle Bold/Italic/Bullet-List berturut-turut, 0 error di console (sebelumnya crash di percobaan pertama).
+
+**5) `App\Support\RichText::sanitize()`** (kelas baru) — sanitasi server-side SEBELUM disimpan, pertahanan berlapis (konten hanya ditulis 1 admin, tapi endpoint yg sama bisa di-bypass via curl/DevTools langsung tanpa lewat editor). Pakai `DOMDocument` (ext-dom bawaan PHP, BUKAN package Composer baru) — BUKAN `strip_tags()` doang (yg cuma buang TAG tak diizinkan tapi TETAP mempertahankan SEMUA atribut di tag yg diizinkan, celah gampang terlewat mis. `<p onclick="...">` tetap lolos). Whitelist tag: `p/strong/em/u/ul/ol/li/a/blockquote/code/br`. Tag tak dikenal (mis. `<script>`) dibuang TAPI teks di dalamnya "diangkat" ke parent (bukan ikut hilang — jadi teks inert, bukan executable). SEMUA atribut di tag yg diizinkan dihapus KECUALI `href` di `<a>` yg dibangun ulang dari nilai tervalidasi (hanya skema `http`/`https` atau path relatif diawali `/` — `javascript:`/`data:`/dst ditolak, `<a>` dgn href ditolak diubah jadi teks biasa).
+
+**6) Migrasi data 1x (BUKAN migration Laravel)** — 4 artikel existing di-cek dulu (`php artisan tinker`): SEMUA `body` section adalah plain text TANPA newline sama sekali (tidak ada struktur multi-paragraf yg perlu dipecah) DAN tidak mengandung karakter `<`/`>`/`&` literal (tidak butuh escaping khusus) — menyederhanakan migrasi jadi: bungkus tiap `body` existing dgn `<p>...</p>` (via `e()` + `nl2br()` defensif) lalu jalankan lewat `RichText::sanitize()` yg sama (konsistensi penuh dgn jalur simpan baru). Dijalankan SEKALI via tinker, 4 post ter-migrasi, hasil dicek manual (isi & struktur `<p>` benar di semua 4).
+
+**7) Rendering publik**: `article-modal.blade.php` — `<p ... x-text="sec.body">` → `<div class="rich-content ..." x-html="sec.body">` — **SATU-SATUNYA tempat di seluruh codebase yang merender HTML mentah** (bukan escape sbg teks). Aman krn `sec.body` SUDAH disaring server-side sebelum sampai sini. `.rich-content` (CSS custom, BUKAN `@tailwindcss/typography` — plugin "prose" TIDAK diinstal, kebutuhan formatting di sini kecil & spesifik, custom CSS terarah lebih proporsional drpd dependency ke-2 di iterasi yg sama) ditambahkan ke `resources/css/app.css`, dipakai IDENTIK di editor Tiptap (admin) & rendering publik — WYSIWYG sungguhan, bukan cuma mirip-mirip.
+
+**8) Verifikasi end-to-end** — `php artisan serve --port=8270` + `curl` (server-side) DAN **browser sungguhan** (claude-in-chrome, untuk JS/UI yang curl tidak bisa uji), `storage/logs/laravel.log` dikosongkan sebelum sesi → 0 baris di akhir.
+
+| # | Skenario | Metode | Hasil |
+|---|---|---|---|
+| 1 | `npm run build` — cek `public-*.js` TIDAK bertambah, `admin-*.js` bertambah signifikan | build | **LOLOS** — public 5.54 kB (byte-identik), admin 1 kB → 374 kB |
+| 2 | Migrasi data 4 artikel existing | tinker | **LOLOS** — semua `body` terbungkus `<p>...</p>` dgn benar, dicek manual |
+| 3 | `GET /` publik — konten migrasi ter-embed benar di JSON (via `@json()`) | curl | **LOLOS** — `<p>...<\/p>` (escape standar Laravel `Js::from()`, sama pola dgn field lain yg sudah ada spt `codeSnippet.code`) |
+| 4 | `GET /admin/blog/create` — markup Tiptap ada | curl | **LOLOS** — `richTextEditor`/`x-ref="editorEl"` hadir |
+| 5 | Submit POST langsung (curl, simulasi Tiptap) dgn body berisi bold/italic + `<a href="javascript:...">` + `<script>` | curl | **LOLOS** — tersimpan: bold/italic OK, link jahat jadi teks biasa, link aman dipertahankan + `target`/`rel` ditambah, `<script>` terbuang (isi jadi teks inert) |
+| 6 | `GET /` — post baru muncul, HTML tersanitasi ter-embed (bukan raw `<script>`) | curl | **LOLOS** |
+| 7 | **Browser sungguhan**: buka `/admin/blog/7/edit`, editor render dgn toolbar + konten ter-load benar | claude-in-chrome | **LOLOS** (screenshot) — TAPI console menunjukkan `RangeError: Applying a mismatched transaction` saat toolbar diklik (lihat Ringkasan poin 4) |
+| 8 | Perbaikan (closure variable) → rebuild → re-test toolbar (Bold/Italic/Bullet-List berturut-turut) | claude-in-chrome | **LOLOS** — 0 error console, toolbar active-state (highlight) ikut berubah real-time, teks benar-benar berubah format (di-zoom utk konfirmasi visual) |
+| 9 | Ketik teks baru, hapus baris lama, klik "Simpan Perubahan" | claude-in-chrome | **LOLOS** — redirect ke list dgn flash "Artikel blog berhasil diperbarui", DB terkonfirmasi (tinker) berisi `<p>Paragraf final setelah perbaikan bug.</p>` |
+| 10 | Buka artikel di halaman publik (`/` → klik card → modal) | claude-in-chrome | **LOLOS** (screenshot) — heading & paragraf tampil terformat (bukan tag mentah), 0 console error |
+| 11 | Housekeeping: hapus post uji (`DELETE /admin/blog/7`) | curl | **LOLOS** — `BlogPost::count()` kembali 4 |
+| 12 | Regresi: `GET /`, `/projects`, `/projects/lumina-saas`, smoke-test 8 halaman admin | curl | **LOLOS** — semua 200 |
+
+`storage/logs/laravel.log` bersih (0 baris) sepanjang sesi (baik selama uji curl maupun browser). Server dimatikan di akhir.
+
+### File/area utama yang berubah
+- **Dependency baru**: `@tiptap/core`, `@tiptap/starter-kit` (`package.json`/`package-lock.json`) — HANYA dipakai `resources/js/admin.js`.
+- **Kelas baru**: `app/Support/RichText.php` (sanitasi HTML server-side).
+- **JS diubah**: `resources/js/admin.js` — `Alpine.data('richTextEditor', ...)` baru (lihat Ringkasan poin 3-4 utk detail arsitektur & bugfix).
+- **CSS diubah**: `resources/css/app.css` — kelas `.rich-content` baru (format p/strong/em/u/list/blockquote/code/a).
+- **Controller diubah**: `app/Http/Controllers/Admin/BlogPostController.php` — `validated()` sanitasi `body` via `RichText::sanitize()` SEBELUM cek blank & simpan.
+- **View diubah**: `resources/views/admin/blog/form.blade.php` (textarea `body` → toolbar+editor Tiptap), `resources/views/components/icon.blade.php` (6 ikon baru: bold/italic/underline/list/list-ordered/link), `resources/views/portfolio/partials/article-modal.blade.php` (`x-text` → `x-html` utk `sec.body`, satu-satunya tempat raw-HTML di codebase).
+- **Skema DB**: TIDAK ada perubahan (`sections` JSON tetap sama, hanya isi `body` yang berubah format) — `docs/ERD.md` TIDAK diupdate.
+- **Data**: 4 baris `blog_posts` dimigrasi 1x (lihat Ringkasan poin 6) — BUKAN migration Laravel formal.
+
+### Migrasi & seeder dijalankan
+- Tidak ada migration Laravel — 1x migrasi DATA via tinker (lihat Ringkasan poin 6), bukan perubahan skema.
+
+### Verifikasi
+Lihat tabel 12 skenario di Ringkasan poin 8 — **SEMUA LOLOS**, termasuk 1 bug NYATA yang ditemukan lewat uji browser sungguhan (bukan cuma curl) dan diperbaiki sebelum dianggap selesai. `storage/logs/laravel.log` bersih sepanjang sesi. Regresi publik/admin hijau.
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user.
+
+### Catatan untuk review
+- **Uji browser sungguhan (claude-in-chrome) terbukti esensial di iterasi ini** — bug `RangeError: Applying a mismatched transaction` TIDAK PERNAH muncul di pengujian curl manapun sepanjang Fase 4-5 sebelumnya (curl tidak pernah menjalankan JS), dan baru ketahuan justru krn iterasi ini pertama kali memperkenalkan library JS interaktif kompleks (Tiptap/ProseMirror) yang state-nya sensitif terhadap reactivity wrapper. Kalau iterasi mendatang menambah komponen JS interaktif serupa (bukan sekadar toggle/reorder sederhana), pertimbangkan uji browser sungguhan sejak awal, bukan cuma di akhir.
+- **Pola "closure variable, bukan `this.x`" utk instance library pihak ketiga yang stateful** — dicatat di sini sbg pelajaran arsitektur utk Alpine.js + library manapun yang punya internal state management sendiri (ProseMirror, CodeMirror, Chart.js versi tertentu, dst): JANGAN simpan instance-nya sbg properti biasa di `Alpine.data()`, pakai closure variable di luar objek yang di-return.
+- **`heading`/`codeBlock` Tiptap SENGAJA dimatikan** — kalau nanti ada permintaan "body juga bisa punya heading sendiri" atau "code block bisa lebih dari satu per section", ini akan butuh keputusan desain baru (apakah field `heading`/`codeSnippet` section yang existing dihapus & digantikan node Tiptap, atau tetap dipertahankan berdampingan) — BUKAN sekadar menyalakan opsi yang dimatikan, krn akan menciptakan 2 cara berbeda melakukan hal yang sama.
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai instruksi user (commit manual).
+
+---
+
 ## Iterasi 26 — Gaya Reveal-on-Scroll (Banyak Pilihan, 1 Aktif) (selesai: 2026-08-25)
 Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan Iterasi 24-25.**
 

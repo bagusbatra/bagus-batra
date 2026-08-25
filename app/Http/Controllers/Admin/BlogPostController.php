@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BlogPost;
+use App\Support\RichText;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -134,13 +135,24 @@ class BlogPostController extends Controller
 
         $sections = [];
         foreach ($data['sections'] ?? [] as $row) {
-            if (blank($row['heading'] ?? null) && blank($row['body'] ?? null)) {
+            // Iterasi 27 (Fase 5): `body` sekarang HTML (Tiptap) — SANITASI
+            // DULU (App\Support\RichText::sanitize()) SEBELUM dicek blank
+            // ATAU disimpan. Editor kosong bisa menghasilkan markup
+            // non-kosong scr string (mis. "<p></p>") walau tidak ada teks
+            // sama sekali — cek blank pakai versi TANPA tag (strip_tags),
+            // bukan string HTML mentahnya, supaya baris section yang
+            // heading-nya kosong DAN body-nya "kosong secara visual" tetap
+            // ke-skip sama seperti perilaku sebelum Iterasi 27.
+            $bodyHtml = RichText::sanitize($row['body'] ?? null);
+            $bodyIsBlank = trim(strip_tags($bodyHtml)) === '';
+
+            if (blank($row['heading'] ?? null) && $bodyIsBlank) {
                 continue; // skip fully-empty repeater rows
             }
 
             $section = [
                 'heading' => $row['heading'] ?? '',
-                'body' => $row['body'] ?? '',
+                'body' => $bodyHtml,
             ];
 
             if (filled($row['code_language'] ?? null) || filled($row['code_filename'] ?? null) || filled($row['code_code'] ?? null)) {
