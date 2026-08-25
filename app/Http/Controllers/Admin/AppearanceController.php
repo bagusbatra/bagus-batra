@@ -67,6 +67,26 @@ class AppearanceController extends Controller
             ->sortBy(fn (SectionSetting $s) => (int) $s->effective('sort_order', true))
             ->values();
 
+        // Iterasi 21 (Fase 4, Bagian A) — sama pola dgn $animationsEnabled:
+        // admin yang sedang mengedit form SELALU melihat nilai efektif draft
+        // (preview = true).
+        $navbarCtaVisible = DisplaySetting::getBool('navbar_cta_visible', true, true);
+        $floatingWidgetVisible = DisplaySetting::getBool('floating_widget_visible', true, true);
+        $heroSocialBarVisible = DisplaySetting::getBool('hero_social_bar_visible', true, true);
+
+        // Iterasi 21 (Fase 4, Bagian B) — 6 section top-level yang PUNYA
+        // heading/subheading hardcoded (hero DIKECUALIKAN, lihat catatan
+        // keputusan di docs/LOG-ITERASI.md entri Iterasi 21) diurutkan
+        // menurut SECTION_PARTIALS (urutan tampil default) supaya form
+        // heading terasa konsisten dgn urutan section di halaman publik.
+        // preview=true SELALU dipakai (sama pola dgn variabel lain di atas).
+        $headingSectionKeys = array_values(array_diff(array_keys(PortfolioController::SECTION_PARTIALS), ['hero']));
+        $headingSections = SectionSetting::whereIn('section_key', $headingSectionKeys)
+            ->get()
+            ->keyBy('section_key')
+            ->sortBy(fn (SectionSetting $s) => array_search($s->section_key, $headingSectionKeys, true))
+            ->values();
+
         $tab = $request->query('tab', 'ringkasan');
 
         return view('admin.appearance.index', compact(
@@ -78,6 +98,10 @@ class AppearanceController extends Controller
             'accentPresets',
             'hasPendingDraft',
             'orderedTopLevelSections',
+            'navbarCtaVisible',
+            'floatingWidgetVisible',
+            'heroSocialBarVisible',
+            'headingSections',
             'tab'
         ));
     }
@@ -200,6 +224,93 @@ class AppearanceController extends Controller
         return redirect()
             ->route('admin.appearance', ['tab' => 'sections'])
             ->with('success', 'Urutan & jumlah item disimpan sebagai draft. Buka Preview untuk melihatnya, lalu Publish supaya berlaku di situs live.');
+    }
+
+    /**
+     * Iterasi 21 (Fase 4, Bagian A) — toggle sub-elemen halaman: CTA navbar
+     * (Rekrut Saya/Hire Me + Download CV, DIGABUNG jadi SATU setting, lihat
+     * keputusan lengkap di docs/LOG-ITERASI.md entri Iterasi 21), floating
+     * widget kanan-bawah, dan social bar di Hero (BUKAN footer — footer
+     * selalu tampil, di luar cakupan toggle ini). Menyimpan ke
+     * display_settings.value_draft lewat DisplaySetting::setDraft(), sama
+     * pola persis dgn updateAnimations() — pengguna KEEMPAT dari alur draft
+     * generik Iterasi 18.
+     */
+    public function updateElements(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'navbar_cta_visible' => ['nullable', 'boolean'],
+            'floating_widget_visible' => ['nullable', 'boolean'],
+            'hero_social_bar_visible' => ['nullable', 'boolean'],
+        ]);
+
+        DisplaySetting::setDraft('navbar_cta_visible', $request->boolean('navbar_cta_visible'));
+        DisplaySetting::setDraft('floating_widget_visible', $request->boolean('floating_widget_visible'));
+        DisplaySetting::setDraft('hero_social_bar_visible', $request->boolean('hero_social_bar_visible'));
+
+        return redirect()
+            ->route('admin.appearance', ['tab' => 'elemen'])
+            ->with('success', 'Perubahan disimpan sebagai draft. Buka Preview untuk melihatnya, lalu Publish supaya berlaku di situs live.');
+    }
+
+    /**
+     * Iterasi 21 (Fase 4, Bagian B) — custom heading/subheading per section.
+     * Menulis ke section_settings.draft_overrides (BUKAN langsung ke kolom
+     * asli), pola sama persis dgn updateSections() — field kosong disimpan
+     * sbg NULL eksplisit di draft_overrides supaya publish() menghasilkan
+     * kolom asli NULL juga (fallback ke teks hardcoded Blade tetap aktif,
+     * lihat SectionSetting::effective() & partial masing2 section).
+     *
+     * "about" TIDAK dikirim field subheading (form tidak menyediakan
+     * input-nya) — slot subheading section itu terikat ke
+     * $personalInfo['bio_id'/'bio_en'] (sudah bisa diedit lewat Admin >
+     * Profil & Hero), override kedua di sini akan jadi titik edit ganda yang
+     * membingungkan utk konten yang sama. "hero" TIDAK termasuk sama sekali
+     * (lihat catatan keputusan lengkap di docs/LOG-ITERASI.md).
+     */
+    public function updateHeadings(Request $request): RedirectResponse
+    {
+        $sectionKeys = array_values(array_diff(array_keys(PortfolioController::SECTION_PARTIALS), ['hero']));
+
+        $validated = $request->validate([
+            'heading_id' => ['nullable', 'array'],
+            'heading_id.*' => ['nullable', 'string', 'max:255'],
+            'heading_en' => ['nullable', 'array'],
+            'heading_en.*' => ['nullable', 'string', 'max:255'],
+            'subheading_id' => ['nullable', 'array'],
+            'subheading_id.*' => ['nullable', 'string', 'max:1000'],
+            'subheading_en' => ['nullable', 'array'],
+            'subheading_en.*' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $sections = SectionSetting::whereIn('section_key', $sectionKeys)->get()->keyBy('section_key');
+
+        foreach ($sectionKeys as $key) {
+            $section = $sections->get($key);
+            if (! $section) {
+                continue;
+            }
+
+            $overrides = is_array($section->draft_overrides) ? $section->draft_overrides : [];
+
+            $overrides['heading_id'] = ($validated['heading_id'][$key] ?? '') !== '' ? $validated['heading_id'][$key] : null;
+            $overrides['heading_en'] = ($validated['heading_en'][$key] ?? '') !== '' ? $validated['heading_en'][$key] : null;
+
+            // "about" sengaja tidak punya field subheading di form (lihat
+            // docblock method ini) — jangan overwrite key ini dgn null kalau
+            // memang tidak pernah dikirim sama sekali dari form.
+            if ($key !== 'about') {
+                $overrides['subheading_id'] = ($validated['subheading_id'][$key] ?? '') !== '' ? $validated['subheading_id'][$key] : null;
+                $overrides['subheading_en'] = ($validated['subheading_en'][$key] ?? '') !== '' ? $validated['subheading_en'][$key] : null;
+            }
+
+            $section->draft_overrides = $overrides;
+            $section->save();
+        }
+
+        return redirect()
+            ->route('admin.appearance', ['tab' => 'sections'])
+            ->with('success', 'Custom heading/subheading disimpan sebagai draft. Buka Preview untuk melihatnya, lalu Publish supaya berlaku di situs live.');
     }
 
     /**

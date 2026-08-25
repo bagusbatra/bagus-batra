@@ -70,14 +70,22 @@
                     </button>
                 </div>
 
-                {{-- Social Media Links Bar --}}
-                <div data-reveal class="pt-3 border-t border-slate-200/60">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                        <span x-show="$store.lang.current === 'id'">Koneksi &amp; Media Sosial</span>
-                        <span x-show="$store.lang.current === 'en'" x-cloak>Connect on Social Platforms</span>
-                    </p>
-                    @include('portfolio.partials.social-bar', ['variant' => 'horizontal'])
-                </div>
+                {{--
+                    Social Media Links Bar — Iterasi 21 (Fase 4, Bagian A):
+                    toggle `hero_social_bar_visible`. HANYA baris ini (Hero),
+                    BUKAN social-bar varian 'cards' di section Contact
+                    (contact.blade.php) yang selalu tampil, di luar cakupan
+                    toggle ini — lihat docs/LOG-ITERASI.md entri Iterasi 21.
+                --}}
+                @if ($heroSocialBarVisible ?? true)
+                    <div data-reveal class="pt-3 border-t border-slate-200/60">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <span x-show="$store.lang.current === 'id'">Koneksi &amp; Media Sosial</span>
+                            <span x-show="$store.lang.current === 'en'" x-cloak>Connect on Social Platforms</span>
+                        </p>
+                        @include('portfolio.partials.social-bar', ['variant' => 'horizontal'])
+                    </div>
+                @endif
             </div>
 
             {{-- Right Column: Interactive Developer Profile & Code Card --}}

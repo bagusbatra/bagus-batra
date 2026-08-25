@@ -84,16 +84,30 @@
                     <span class="uppercase" x-text="$store.lang.current"></span>
                 </button>
 
-                <button id="nav-cv-download-btn" @click="$store.ui.openCv()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-white/80 rounded-lg transition-colors border border-white/80 bg-white/50 backdrop-blur-md shadow-2xs cursor-pointer hover:scale-105 active:scale-95">
-                    <x-icon name="file-down" class="w-3.5 h-3.5" />
-                    <span>CV</span>
-                </button>
+                {{--
+                    Iterasi 21 (Fase 4, Bagian A): toggle `navbar_cta_visible`
+                    — SATU setting mengontrol KEDUA tombol CTA (Download CV +
+                    Rekrut Saya/Hire Me) sekaligus, BUKAN 2 setting terpisah.
+                    Keputusan: kedua tombol ini adalah satu "grup aksi" CTA
+                    navbar secara visual (bersebelahan, sama-sama
+                    mengarahkan visitor ke suatu aksi), me-nonaktifkan salah
+                    satu tapi tidak yang lain akan terlihat asimetris/aneh
+                    tanpa manfaat UX yang jelas — lihat docs/LOG-ITERASI.md
+                    entri Iterasi 21 untuk detail. Tombol "lang-toggle-btn" DI
+                    LUAR toggle ini (tetap selalu tampil).
+                --}}
+                @if ($navbarCtaVisible ?? true)
+                    <button id="nav-cv-download-btn" @click="$store.ui.openCv()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-white/80 rounded-lg transition-colors border border-white/80 bg-white/50 backdrop-blur-md shadow-2xs cursor-pointer hover:scale-105 active:scale-95">
+                        <x-icon name="file-down" class="w-3.5 h-3.5" />
+                        <span>CV</span>
+                    </button>
 
-                <button id="nav-hire-me-btn" @click="scrollTo('contact')" class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-[var(--accent-600)] rounded-lg transition-all duration-200 shadow-xs hover:shadow-[var(--accent-500)]/20 cursor-pointer hover:scale-105 active:scale-95">
-                    <x-icon name="sparkles" class="w-3.5 h-3.5 text-indigo-300" />
-                    <span x-show="$store.lang.current === 'id'">Rekrut Saya</span>
-                    <span x-show="$store.lang.current === 'en'" x-cloak>Hire Me</span>
-                </button>
+                    <button id="nav-hire-me-btn" @click="scrollTo('contact')" class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-[var(--accent-600)] rounded-lg transition-all duration-200 shadow-xs hover:shadow-[var(--accent-500)]/20 cursor-pointer hover:scale-105 active:scale-95">
+                        <x-icon name="sparkles" class="w-3.5 h-3.5 text-indigo-300" />
+                        <span x-show="$store.lang.current === 'id'">Rekrut Saya</span>
+                        <span x-show="$store.lang.current === 'en'" x-cloak>Hire Me</span>
+                    </button>
+                @endif
             </div>
 
             {{-- Mobile Menu & Quick Lang Toggle --}}
@@ -138,6 +152,8 @@
             @endforeach
         </div>
 
+        {{-- Iterasi 21 (Fase 4, Bagian A): setting sama, navbar_cta_visible, mengontrol grup CTA mobile ini juga (lihat komentar keputusan di grup CTA desktop di atas). --}}
+        @if ($navbarCtaVisible ?? true)
         <div class="pt-4 mt-3 border-t border-slate-200/60 flex flex-col gap-2.5">
             <button id="mobile-cv-btn" @click="mobileMenuOpen = false; $store.ui.openCv()" class="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl shadow-2xs cursor-pointer">
                 <x-icon name="file-down" class="w-4 h-4 text-indigo-600" />
@@ -150,5 +166,6 @@
                 <span x-show="$store.lang.current === 'en'" x-cloak>Start Project Discussion</span>
             </button>
         </div>
+        @endif
     </div>
 </header>

@@ -291,18 +291,183 @@
                 </button>
             </form>
 
+            {{--
+                Custom Heading & Subheading — FUNGSIONAL (Iterasi 21, Bagian
+                B). 6 section: about, projects, experience, blog,
+                testimonials, contact. "hero" DIKECUALIKAN (headline-nya
+                sebuah kalimat panjang dgn 1 frasa ter-highlight warna
+                gradient di tengah kalimat, bukan "judul + sub-judul" yang
+                bisa diganti teks bebas tanpa merusak struktur highlight-nya
+                — lihat resources/views/portfolio/partials/hero.blade.php).
+                "about" HANYA punya field heading (subheading section itu
+                terikat ke bio dari Admin > Profil & Hero, sudah ada titik
+                edit sendiri) — lihat docblock
+                AppearanceController@updateHeadings.
+            --}}
+            @php
+                $headingDefaults = [
+                    'about' => [
+                        'heading_id' => 'Menghubungkan Desain Presisi dengan Kode Berkinerja Tinggi',
+                        'heading_en' => 'Bridging Pixel Precision with High-Performance Architecture',
+                    ],
+                    'projects' => [
+                        'heading_id' => 'Studi Kasus Proyek Web & Arsitektur Sistem',
+                        'heading_en' => 'Selected Web Projects & Systems Architecture',
+                        'subheading_id' => 'Koleksi produk digital nyata yang saya rancang dari tahap konsep hingga deployment dengan fokus kecepatan & pengalaman pengguna.',
+                        'subheading_en' => 'Production applications built with a focus on runtime performance, accessibility, and high conversion.',
+                    ],
+                    'experience' => [
+                        'heading_id' => 'Jejak Rekam Profesional & Kepemimpinan Teknis',
+                        'heading_en' => 'Professional Journey & Technical Leadership',
+                        'subheading_id' => 'Perjalanan saya dalam mengembangkan ekosistem web berskala besar, memimpin tim engineering, dan menyelesaikan tantangan arsitektur kompleks.',
+                        'subheading_en' => 'Over 6 years of architecting scalable web applications, mentoring development teams, and shipping production-grade software.',
+                    ],
+                    'blog' => [
+                        'heading_id' => 'Wawasan Rekayasa Web, Performa & Best Practices',
+                        'heading_en' => 'Architectural Insights, Performance & Web Deep Dives',
+                        'subheading_id' => 'Catatan teknis, eksplorasi framework modern, dan studi kasus nyata yang saya tulis secara berkala untuk komunitas pengembang.',
+                        'subheading_en' => 'Deep-dive tutorials, performance breakdown case studies, and modern frontend development patterns.',
+                    ],
+                    'testimonials' => [
+                        'heading_id' => 'Apa Kata Rekan Kerja, CTO & Klien Kolaborator',
+                        'heading_en' => 'What Engineering Leaders & Clients Say',
+                        'subheading_id' => 'Testimoni nyata dari para pemimpin teknologi dan founder yang telah berkolaborasi dalam proyek-proyek penting.',
+                        'subheading_en' => 'Endorsements from engineering leaders, product managers, and founders on delivered solutions.',
+                    ],
+                    'contact' => [
+                        'heading_id' => 'Punya Ide Proyek Hebat? Mari Kita Wujudkan Bersama.',
+                        'heading_en' => 'Have a Project in Mind? Let’s Build Something Exceptional.',
+                        'subheading_id' => 'Tersedia untuk proyek freelance terpilih, kontrak konsultasi arsitektur frontend, maupun peran full-time strategis. Respon dalam < 24 jam.',
+                        'subheading_en' => 'Open for selected contract builds, architectural consultations, and full-time remote engineering roles.',
+                    ],
+                ];
+            @endphp
+
+            <form
+                method="POST"
+                action="{{ route('admin.appearance.headings.update') }}"
+                data-reveal
+                class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-5 sm:p-6 space-y-5"
+            >
+                @csrf
+                @method('PUT')
+
+                <div>
+                    <h3 class="text-sm font-extrabold text-slate-900">Custom Heading &amp; Subheading</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Ganti judul/sub-judul tampilan section (ID &amp; EN terpisah). Kosongkan field untuk kembali memakai teks default (placeholder di bawah menunjukkan teks default saat ini). Section "Hero" tidak ada di sini karena headline-nya satu kalimat dgn frasa ber-highlight warna, bukan pola judul/sub-judul biasa.
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    @foreach ($headingSections as $section)
+                        @php
+                            $key = $section->section_key;
+                            $defaults = $headingDefaults[$key] ?? [];
+                            $hasSubheading = array_key_exists('subheading_id', $defaults);
+                        @endphp
+                        <div class="p-4 rounded-2xl border border-slate-200/70 bg-slate-50/60 space-y-3">
+                            <div class="text-xs font-extrabold text-slate-700 uppercase tracking-wide">{{ $section->label }} <span class="text-slate-400 font-mono normal-case">#{{ $key }}</span></div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500">Heading (ID)</label>
+                                    <input type="text" name="heading_id[{{ $key }}]" value="{{ $section->effective('heading_id', true) }}" placeholder="{{ $defaults['heading_id'] ?? '' }}" maxlength="255" class="mt-1 w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-indigo-500" />
+                                </div>
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500">Heading (EN)</label>
+                                    <input type="text" name="heading_en[{{ $key }}]" value="{{ $section->effective('heading_en', true) }}" placeholder="{{ $defaults['heading_en'] ?? '' }}" maxlength="255" class="mt-1 w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-indigo-500" />
+                                </div>
+
+                                @if ($hasSubheading)
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-500">Subheading (ID)</label>
+                                        <textarea name="subheading_id[{{ $key }}]" rows="2" placeholder="{{ $defaults['subheading_id'] ?? '' }}" maxlength="1000" class="mt-1 w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-indigo-500">{{ $section->effective('subheading_id', true) }}</textarea>
+                                    </div>
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-500">Subheading (EN)</label>
+                                        <textarea name="subheading_en[{{ $key }}]" rows="2" placeholder="{{ $defaults['subheading_en'] ?? '' }}" maxlength="1000" class="mt-1 w-full px-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-indigo-500">{{ $section->effective('subheading_en', true) }}</textarea>
+                                    </div>
+                                @else
+                                    <div class="sm:col-span-2 text-[11px] text-slate-400 italic">Section ini tidak punya field subheading — lihat catatan di atas form.</div>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-colors">
+                    <x-icon name="check" class="w-3.5 h-3.5" />
+                    Simpan sebagai Draft
+                </button>
+            </form>
+
             @include('admin.section-settings._list')
         </div>
 
-        {{-- Tab: Elemen Halaman (placeholder — Iterasi 21) --}}
-        <div x-show="tab === 'elemen'" x-cloak data-reveal class="flex flex-col items-center justify-center text-center py-16 bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs space-y-3">
-            <div class="w-12 h-12 rounded-2xl bg-indigo-50/80 text-indigo-600 flex items-center justify-center border border-indigo-100/60">
-                <x-icon name="layers" class="w-6 h-6" />
+        {{-- Tab: Elemen Halaman — FUNGSIONAL (Iterasi 21, Bagian A) --}}
+        <div x-show="tab === 'elemen'" x-cloak data-reveal class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-6 space-y-5">
+            <div>
+                <h3 class="text-sm font-extrabold text-slate-900">Elemen Halaman</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Tampil/sembunyikan sub-elemen tertentu di halaman publik. Perubahan tersimpan sebagai draft — cek "Buka Preview" sebelum Publish.</p>
             </div>
-            <div class="space-y-1">
-                <h3 class="text-base font-extrabold text-slate-900">Elemen Halaman — Segera Hadir</h3>
-                <p class="text-sm text-slate-500 max-w-md mx-auto">Toggle CTA navbar, floating widget, dan social bar Hero direncanakan Iterasi 21.</p>
-            </div>
+
+            <form method="POST" action="{{ route('admin.appearance.elements.update') }}" class="space-y-4">
+                @csrf
+                @method('PUT')
+
+                @php
+                    $elementToggles = [
+                        [
+                            'key' => 'navbar_cta_visible',
+                            'value' => $navbarCtaVisible,
+                            'icon' => 'sparkles',
+                            'label' => 'Tombol CTA Navbar',
+                            'desc' => 'Tombol "Download CV" & "Rekrut Saya/Hire Me" di navbar (desktop & mobile) — SATU setting utk keduanya sekaligus (grup aksi yg sama secara visual), lihat catatan keputusan di komentar resources/views/portfolio/partials/navbar.blade.php.',
+                        ],
+                        [
+                            'key' => 'floating_widget_visible',
+                            'value' => $floatingWidgetVisible,
+                            'icon' => 'arrow-up',
+                            'label' => 'Widget Kanan-Bawah',
+                            'desc' => 'Widget mengambang (scroll-to-top + quick contact) yang muncul setelah pengunjung scroll ke bawah.',
+                        ],
+                        [
+                            'key' => 'hero_social_bar_visible',
+                            'value' => $heroSocialBarVisible,
+                            'icon' => 'globe',
+                            'label' => 'Social Bar di Hero',
+                            'desc' => 'Baris ikon media sosial di section Hero. TIDAK mempengaruhi social links di Footer maupun kartu media sosial di section Contact — keduanya selalu tampil.',
+                        ],
+                    ];
+                @endphp
+
+                @foreach ($elementToggles as $t)
+                    <div class="flex items-center justify-between gap-4 p-4 rounded-2xl border border-slate-200/70 bg-slate-50/60">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-9 h-9 rounded-xl bg-white/90 text-indigo-600 flex items-center justify-center border border-white shrink-0 shadow-2xs">
+                                <x-icon :name="$t['icon']" class="w-4.5 h-4.5" />
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-sm font-bold text-slate-800">{{ $t['label'] }}</div>
+                                <p class="text-xs text-slate-500 mt-0.5">{{ $t['desc'] }}</p>
+                            </div>
+                        </div>
+
+                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input type="checkbox" name="{{ $t['key'] }}" value="1" class="peer sr-only" {{ $t['value'] ? 'checked' : '' }}>
+                            <div class="w-11 h-6 rounded-full bg-slate-300 peer-checked:bg-indigo-600 transition-colors relative">
+                                <div class="w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform"></div>
+                            </div>
+                        </label>
+                    </div>
+                @endforeach
+
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-colors">
+                    <x-icon name="check" class="w-3.5 h-3.5" />
+                    Simpan sebagai Draft
+                </button>
+            </form>
         </div>
 
         {{-- Tab: Mode Situs (placeholder — Iterasi 22) --}}

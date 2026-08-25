@@ -165,6 +165,14 @@ class PortfolioController extends Controller
             return SectionSetting::pluck('is_active', 'section_key')->all();
         });
 
+        // Iterasi 21 (Fase 4, Bagian B): $topLevelSections (sudah dibangun di
+        // atas utk reorder/display_count) dikirim juga ke view supaya tiap
+        // partial section bisa memanggil ->effective('heading_id'/'heading_en'/
+        // 'subheading_id'/'subheading_en', $appearancePreview) untuk custom
+        // heading/subheading-nya sendiri (fallback ke teks hardcoded kalau
+        // NULL). $appearancePreview sendiri sudah dibagikan ke SEMUA view
+        // lewat HandleAppearancePreview (Iterasi 18), tidak perlu dikirim
+        // ulang di sini.
         return view('portfolio.index', compact(
             'skills',
             'projects',
@@ -174,7 +182,8 @@ class PortfolioController extends Controller
             'personalInfo',
             'socialLinks',
             'sectionActive',
-            'orderedSections'
+            'orderedSections',
+            'topLevelSections'
         ));
     }
 }

@@ -105,34 +105,44 @@
         @yield('content')
     </main>
 
-    {{-- Floating Quick Action Widget (Back to Top & Quick Contact) --}}
-    <div
-        x-show="showFloatingWidget"
-        x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="opacity-0 scale-75 translate-y-5"
-        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-        x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-        x-transition:leave-end="opacity-0 scale-75 translate-y-5"
-        class="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-2.5"
-        style="display: none;"
-    >
-        <button
-            @click="scrollTo('contact')"
-            class="p-3.5 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:scale-108 active:scale-92 transition-all cursor-pointer border border-indigo-400/40 backdrop-blur-md flex items-center justify-center group"
-            :title="$store.lang.current === 'id' ? 'Kirim Pesan / Kontak' : 'Contact Me'"
+    {{--
+        Floating Quick Action Widget (Back to Top & Quick Contact) —
+        Iterasi 21 (Fase 4, Bagian A): toggle `floatingWidgetVisible`.
+        Dibungkus @if di level SERVER (bukan cuma Alpine x-show yang murni
+        client-side scroll-based) supaya benar2 tidak ada di DOM sama sekali
+        saat setting dimatikan (draft-aware lewat
+        App\Http\Middleware\HandleAppearancePreview, pola sama persis
+        $animationsEnabled/$navbarCtaVisible).
+    --}}
+    @if ($floatingWidgetVisible ?? true)
+        <div
+            x-show="showFloatingWidget"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-75 translate-y-5"
+            x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+            x-transition:leave-end="opacity-0 scale-75 translate-y-5"
+            class="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-2.5"
+            style="display: none;"
         >
-            <x-icon name="message-square" class="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
+            <button
+                @click="scrollTo('contact')"
+                class="p-3.5 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:scale-108 active:scale-92 transition-all cursor-pointer border border-indigo-400/40 backdrop-blur-md flex items-center justify-center group"
+                :title="$store.lang.current === 'id' ? 'Kirim Pesan / Kontak' : 'Contact Me'"
+            >
+                <x-icon name="message-square" class="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
 
-        <button
-            @click="scrollToTop()"
-            class="p-3.5 rounded-2xl bg-white/80 hover:bg-white hover:scale-108 active:scale-92 text-slate-700 shadow-lg shadow-slate-300/40 border border-white/90 backdrop-blur-md transition-all cursor-pointer flex items-center justify-center group"
-            :title="$store.lang.current === 'id' ? 'Kembali ke atas' : 'Back to top'"
-        >
-            <x-icon name="arrow-up" class="w-5 h-5 text-indigo-600 group-hover:-translate-y-0.5 transition-transform" />
-        </button>
-    </div>
+            <button
+                @click="scrollToTop()"
+                class="p-3.5 rounded-2xl bg-white/80 hover:bg-white hover:scale-108 active:scale-92 text-slate-700 shadow-lg shadow-slate-300/40 border border-white/90 backdrop-blur-md transition-all cursor-pointer flex items-center justify-center group"
+                :title="$store.lang.current === 'id' ? 'Kembali ke atas' : 'Back to top'"
+            >
+                <x-icon name="arrow-up" class="w-5 h-5 text-indigo-600 group-hover:-translate-y-0.5 transition-transform" />
+            </button>
+        </div>
+    @endif
 
     @include('portfolio.partials.footer')
 

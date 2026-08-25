@@ -60,6 +60,17 @@ class HandleAppearancePreview
         $logoType = DisplaySetting::get('logo_type', 'text', $previewActive);
         $logoImage = DisplaySetting::get('logo_image', null, $previewActive);
 
+        // Iterasi 21 (Fase 4) — toggle sub-elemen halaman (Bagian A). Ketiga
+        // key ini defaultnya TRUE (elemen tampil) kalau baris belum pernah
+        // dibuat sama sekali, pola identik $animationsEnabled Iterasi 18.
+        // Dibagikan di sini (bukan cuma AppearanceController) supaya
+        // tersedia di SEMUA halaman publik lewat view()->share() — CTA
+        // navbar & floating widget dipakai layouts/app.blade.php (shared
+        // semua halaman publik), bukan cuma index.
+        $navbarCtaVisible = DisplaySetting::getBool('navbar_cta_visible', true, $previewActive);
+        $floatingWidgetVisible = DisplaySetting::getBool('floating_widget_visible', true, $previewActive);
+        $heroSocialBarVisible = DisplaySetting::getBool('hero_social_bar_visible', true, $previewActive);
+
         $hasPendingDraft = $previewActive
             ? (DisplaySetting::hasPendingDraft() || SectionSetting::query()->whereNotNull('draft_overrides')->exists())
             : false;
@@ -70,6 +81,9 @@ class HandleAppearancePreview
         view()->share('accentPreset', $accentPreset);
         view()->share('logoType', $logoType);
         view()->share('logoImage', $logoImage);
+        view()->share('navbarCtaVisible', $navbarCtaVisible);
+        view()->share('floatingWidgetVisible', $floatingWidgetVisible);
+        view()->share('heroSocialBarVisible', $heroSocialBarVisible);
 
         return $next($request);
     }

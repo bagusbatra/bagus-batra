@@ -51,6 +51,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('appearance/animations', [AppearanceController::class, 'updateAnimations'])->name('appearance.animations.update');
         Route::put('appearance/branding', [AppearanceController::class, 'updateBranding'])->name('appearance.branding.update');
         Route::put('appearance/sections', [AppearanceController::class, 'updateSections'])->name('appearance.sections.update');
+        Route::put('appearance/headings', [AppearanceController::class, 'updateHeadings'])->name('appearance.headings.update');
+        Route::put('appearance/elements', [AppearanceController::class, 'updateElements'])->name('appearance.elements.update');
         Route::post('appearance/publish', [AppearanceController::class, 'publish'])->name('appearance.publish');
         Route::post('appearance/discard', [AppearanceController::class, 'discardDraft'])->name('appearance.discard');
 

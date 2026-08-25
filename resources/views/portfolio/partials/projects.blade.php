@@ -19,13 +19,14 @@
                     <span x-show="$store.lang.current === 'id'">Karya Pilihan</span>
                     <span x-show="$store.lang.current === 'en'" x-cloak>Featured Work</span>
                 </div>
+                {{-- Iterasi 21 (Fase 4, Bagian B): custom heading/subheading, fallback ke teks hardcoded kalau kosong — lihat docs/LOG-ITERASI.md entri Iterasi 21. --}}
                 <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                    <span x-show="$store.lang.current === 'id'">Studi Kasus Proyek Web &amp; Arsitektur Sistem</span>
-                    <span x-show="$store.lang.current === 'en'" x-cloak>Selected Web Projects &amp; Systems Architecture</span>
+                    <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['projects']->effective('heading_id', $appearancePreview ?? false) ?: 'Studi Kasus Proyek Web & Arsitektur Sistem' }}</span>
+                    <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['projects']->effective('heading_en', $appearancePreview ?? false) ?: 'Selected Web Projects & Systems Architecture' }}</span>
                 </h2>
                 <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                    <span x-show="$store.lang.current === 'id'">Koleksi produk digital nyata yang saya rancang dari tahap konsep hingga deployment dengan fokus kecepatan &amp; pengalaman pengguna.</span>
-                    <span x-show="$store.lang.current === 'en'" x-cloak>Production applications built with a focus on runtime performance, accessibility, and high conversion.</span>
+                    <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['projects']->effective('subheading_id', $appearancePreview ?? false) ?: 'Koleksi produk digital nyata yang saya rancang dari tahap konsep hingga deployment dengan fokus kecepatan & pengalaman pengguna.' }}</span>
+                    <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['projects']->effective('subheading_en', $appearancePreview ?? false) ?: 'Production applications built with a focus on runtime performance, accessibility, and high conversion.' }}</span>
                 </p>
             </div>
 

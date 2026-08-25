@@ -51,8 +51,18 @@
                 <span x-show="$store.lang.current === 'en'" x-cloak>About &amp; Engineering Values</span>
             </div>
             <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                <span x-show="$store.lang.current === 'id'">Menghubungkan Desain Presisi dengan Kode Berkinerja Tinggi</span>
-                <span x-show="$store.lang.current === 'en'" x-cloak>Bridging Pixel Precision with High-Performance Architecture</span>
+                {{--
+                    Iterasi 21 (Fase 4, Bagian B): custom heading via
+                    section_settings.effective('heading_id'/'heading_en',
+                    $appearancePreview), fallback ke teks hardcoded asli
+                    kalau kosong/NULL. Subheading section ini SENGAJA tidak
+                    disertakan (slot paragraf di bawah terikat ke
+                    $personalInfo bio, sudah punya titik edit sendiri di
+                    Admin > Profil & Hero) — lihat docs/LOG-ITERASI.md entri
+                    Iterasi 21.
+                --}}
+                <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['about']->effective('heading_id', $appearancePreview ?? false) ?: 'Menghubungkan Desain Presisi dengan Kode Berkinerja Tinggi' }}</span>
+                <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['about']->effective('heading_en', $appearancePreview ?? false) ?: 'Bridging Pixel Precision with High-Performance Architecture' }}</span>
             </h2>
             <p class="text-slate-600 text-base sm:text-lg leading-relaxed">
                 <span x-show="$store.lang.current === 'id'">{{ $personalInfo['bio_id'] }}</span>

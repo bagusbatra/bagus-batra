@@ -10,13 +10,29 @@
                 <span x-show="$store.lang.current === 'id'">Mulai Kolaborasi</span>
                 <span x-show="$store.lang.current === 'en'" x-cloak>Get In Touch</span>
             </div>
+            {{--
+                Iterasi 21 (Fase 4, Bagian B): custom heading/subheading,
+                fallback ke teks hardcoded kalau kosong — lihat
+                docs/LOG-ITERASI.md entri Iterasi 21. Default EN memakai
+                `{!! !!}` (raw output) + `e()` manual pada bagian dinamisnya
+                SENGAJA (BUKAN pola {{ }} biasa yang dipakai section lain) —
+                supaya entity `&rsquo;` (kutip lengkung) di teks default asli
+                tetap PERSIS sama byte-nya dgn sebelum Iterasi 21 saat
+                fallback aktif (kalau ditulis sbg karakter U+2019 literal di
+                dalam {{ }}, hasil byte HTML-nya beda dgn entity aslinya
+                meski tampil identik di browser — merusak verifikasi
+                byte-per-byte "kosongkan field -> kembali PERSIS ke default
+                asli"). Custom teks admin (bagian dinamis) tetap di-escape
+                manual via e() supaya tidak ada risiko XSS.
+            --}}
             <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                <span x-show="$store.lang.current === 'id'">Punya Ide Proyek Hebat? Mari Kita Wujudkan Bersama.</span>
-                <span x-show="$store.lang.current === 'en'" x-cloak>Have a Project in Mind? Let&rsquo;s Build Something Exceptional.</span>
+                <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['contact']->effective('heading_id', $appearancePreview ?? false) ?: 'Punya Ide Proyek Hebat? Mari Kita Wujudkan Bersama.' }}</span>
+                @php $contactHeadingEn = $topLevelSections['contact']->effective('heading_en', $appearancePreview ?? false); @endphp
+                <span x-show="$store.lang.current === 'en'" x-cloak>{!! $contactHeadingEn ? e($contactHeadingEn) : 'Have a Project in Mind? Let&rsquo;s Build Something Exceptional.' !!}</span>
             </h2>
             <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                <span x-show="$store.lang.current === 'id'">Tersedia untuk proyek freelance terpilih, kontrak konsultasi arsitektur frontend, maupun peran full-time strategis. Respon dalam &lt; 24 jam.</span>
-                <span x-show="$store.lang.current === 'en'" x-cloak>Open for selected contract builds, architectural consultations, and full-time remote engineering roles.</span>
+                <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['contact']->effective('subheading_id', $appearancePreview ?? false) ?: 'Tersedia untuk proyek freelance terpilih, kontrak konsultasi arsitektur frontend, maupun peran full-time strategis. Respon dalam < 24 jam.' }}</span>
+                <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['contact']->effective('subheading_en', $appearancePreview ?? false) ?: 'Open for selected contract builds, architectural consultations, and full-time remote engineering roles.' }}</span>
             </p>
         </div>
 

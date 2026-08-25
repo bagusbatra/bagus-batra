@@ -18,13 +18,14 @@
                     <span x-show="$store.lang.current === 'id'">Blog &amp; Tulisan Teknis</span>
                     <span x-show="$store.lang.current === 'en'" x-cloak>Engineering Blog &amp; Insights</span>
                 </div>
+                {{-- Iterasi 21 (Fase 4, Bagian B): custom heading/subheading, fallback ke teks hardcoded kalau kosong — lihat docs/LOG-ITERASI.md entri Iterasi 21. --}}
                 <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                    <span x-show="$store.lang.current === 'id'">Wawasan Rekayasa Web, Performa &amp; Best Practices</span>
-                    <span x-show="$store.lang.current === 'en'" x-cloak>Architectural Insights, Performance &amp; Web Deep Dives</span>
+                    <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['blog']->effective('heading_id', $appearancePreview ?? false) ?: 'Wawasan Rekayasa Web, Performa & Best Practices' }}</span>
+                    <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['blog']->effective('heading_en', $appearancePreview ?? false) ?: 'Architectural Insights, Performance & Web Deep Dives' }}</span>
                 </h2>
                 <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                    <span x-show="$store.lang.current === 'id'">Catatan teknis, eksplorasi framework modern, dan studi kasus nyata yang saya tulis secara berkala untuk komunitas pengembang.</span>
-                    <span x-show="$store.lang.current === 'en'" x-cloak>Deep-dive tutorials, performance breakdown case studies, and modern frontend development patterns.</span>
+                    <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['blog']->effective('subheading_id', $appearancePreview ?? false) ?: 'Catatan teknis, eksplorasi framework modern, dan studi kasus nyata yang saya tulis secara berkala untuk komunitas pengembang.' }}</span>
+                    <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['blog']->effective('subheading_en', $appearancePreview ?? false) ?: 'Deep-dive tutorials, performance breakdown case studies, and modern frontend development patterns.' }}</span>
                 </p>
             </div>
 

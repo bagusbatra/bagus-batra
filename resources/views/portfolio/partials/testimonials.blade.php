@@ -7,13 +7,14 @@
                 <span x-show="$store.lang.current === 'id'">Rekomendasi &amp; Testimoni</span>
                 <span x-show="$store.lang.current === 'en'" x-cloak>Testimonials &amp; Endorsements</span>
             </div>
+            {{-- Iterasi 21 (Fase 4, Bagian B): custom heading/subheading, fallback ke teks hardcoded kalau kosong — lihat docs/LOG-ITERASI.md entri Iterasi 21. --}}
             <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                <span x-show="$store.lang.current === 'id'">Apa Kata Rekan Kerja, CTO &amp; Klien Kolaborator</span>
-                <span x-show="$store.lang.current === 'en'" x-cloak>What Engineering Leaders &amp; Clients Say</span>
+                <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['testimonials']->effective('heading_id', $appearancePreview ?? false) ?: 'Apa Kata Rekan Kerja, CTO & Klien Kolaborator' }}</span>
+                <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['testimonials']->effective('heading_en', $appearancePreview ?? false) ?: 'What Engineering Leaders & Clients Say' }}</span>
             </h2>
             <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                <span x-show="$store.lang.current === 'id'">Testimoni nyata dari para pemimpin teknologi dan founder yang telah berkolaborasi dalam proyek-proyek penting.</span>
-                <span x-show="$store.lang.current === 'en'" x-cloak>Endorsements from engineering leaders, product managers, and founders on delivered solutions.</span>
+                <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['testimonials']->effective('subheading_id', $appearancePreview ?? false) ?: 'Testimoni nyata dari para pemimpin teknologi dan founder yang telah berkolaborasi dalam proyek-proyek penting.' }}</span>
+                <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['testimonials']->effective('subheading_en', $appearancePreview ?? false) ?: 'Endorsements from engineering leaders, product managers, and founders on delivered solutions.' }}</span>
             </p>
         </div>
 

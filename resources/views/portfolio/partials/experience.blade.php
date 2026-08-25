@@ -7,13 +7,14 @@
                 <span x-show="$store.lang.current === 'id'">Karier &amp; Pengalaman</span>
                 <span x-show="$store.lang.current === 'en'" x-cloak>Career &amp; Experience</span>
             </div>
+            {{-- Iterasi 21 (Fase 4, Bagian B): custom heading/subheading, fallback ke teks hardcoded kalau kosong — lihat docs/LOG-ITERASI.md entri Iterasi 21. --}}
             <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                <span x-show="$store.lang.current === 'id'">Jejak Rekam Profesional &amp; Kepemimpinan Teknis</span>
-                <span x-show="$store.lang.current === 'en'" x-cloak>Professional Journey &amp; Technical Leadership</span>
+                <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['experience']->effective('heading_id', $appearancePreview ?? false) ?: 'Jejak Rekam Profesional & Kepemimpinan Teknis' }}</span>
+                <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['experience']->effective('heading_en', $appearancePreview ?? false) ?: 'Professional Journey & Technical Leadership' }}</span>
             </h2>
             <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
-                <span x-show="$store.lang.current === 'id'">Perjalanan saya dalam mengembangkan ekosistem web berskala besar, memimpin tim engineering, dan menyelesaikan tantangan arsitektur kompleks.</span>
-                <span x-show="$store.lang.current === 'en'" x-cloak>Over 6 years of architecting scalable web applications, mentoring development teams, and shipping production-grade software.</span>
+                <span x-show="$store.lang.current === 'id'">{{ $topLevelSections['experience']->effective('subheading_id', $appearancePreview ?? false) ?: 'Perjalanan saya dalam mengembangkan ekosistem web berskala besar, memimpin tim engineering, dan menyelesaikan tantangan arsitektur kompleks.' }}</span>
+                <span x-show="$store.lang.current === 'en'" x-cloak>{{ $topLevelSections['experience']->effective('subheading_en', $appearancePreview ?? false) ?: 'Over 6 years of architecting scalable web applications, mentoring development teams, and shipping production-grade software.' }}</span>
             </p>
         </div>
 
