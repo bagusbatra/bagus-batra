@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\DisplaySetting;
 use App\Models\SectionSetting;
 use App\Support\AccentPreset;
+use App\Support\AnimationStyle;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -48,6 +49,12 @@ class HandleAppearancePreview
 
         $animationsEnabled = DisplaySetting::getBool('animations_enabled', true, $previewActive);
 
+        // Iterasi 26 (Fase 5) — gaya reveal-on-scroll (banyak pilihan, 1
+        // aktif), independen dari $animationsEnabled di atas (on/off tetap
+        // jadi kill-switch utama, gaya ini HANYA relevan kalau animasi
+        // menyala). Pola sama persis $accentPreset.
+        $revealStyle = DisplaySetting::get('reveal_style', AnimationStyle::DEFAULT, $previewActive);
+
         // Iterasi 19 (Fase 4) — preset warna aksen & logo/branding, kedua
         // pengguna KEDUA dari alur draft/publish generik (setelah
         // animations_enabled di Iterasi 18). Dihitung di sini (bukan cuma
@@ -86,6 +93,7 @@ class HandleAppearancePreview
 
         view()->share('appearancePreview', $previewActive);
         view()->share('animationsEnabled', $animationsEnabled);
+        view()->share('revealStyle', $revealStyle);
         view()->share('appearanceHasDraft', $hasPendingDraft);
         view()->share('accentPreset', $accentPreset);
         view()->share('accentCustomHex', $accentCustomHex);

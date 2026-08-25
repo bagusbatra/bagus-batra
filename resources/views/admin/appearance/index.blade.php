@@ -104,7 +104,7 @@
                 Menu ini adalah fondasi Iterasi 18 (Fase 4) — mekanisme <strong>Draft → Preview → Publish/Buang Draft</strong> yang akan dipakai semua fitur kustomisasi tampilan berikutnya (preset warna & logo di Iterasi 19, reorder section & jumlah item di Iterasi 20, sub-elemen & custom heading di Iterasi 21, mode maintenance di Iterasi 22).
             </p>
             <p class="text-sm text-slate-600 leading-relaxed">
-                Tab <strong>Animasi &amp; Efek</strong> sudah fungsional penuh sebagai bukti konsep alur draft/publish (toggle animasi reveal-on-scroll). Tab lain masih placeholder "segera hadir" — struktur menu dan mekanisme draft-nya sudah siap dipakai begitu form masing-masing dibangun.
+                Seluruh tab di menu ini (Tema &amp; Branding, Animasi &amp; Efek, Urutan &amp; Isi Section, Elemen Halaman, Mode Situs) sudah fungsional penuh, lewat alur draft/publish yang sama.
             </p>
         </div>
 
@@ -216,21 +216,21 @@
             </form>
         </div>
 
-        {{-- Tab: Animasi & Efek — FUNGSIONAL (bukti konsep Iterasi 18) --}}
+        {{-- Tab: Animasi & Efek — FUNGSIONAL (bukti konsep Iterasi 18, gaya reveal-on-scroll Iterasi 26) --}}
         <div x-show="tab === 'animasi'" x-cloak data-reveal class="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xs p-6 space-y-5">
             <div>
                 <h3 class="text-sm font-extrabold text-slate-900">Animasi &amp; Efek</h3>
-                <p class="text-xs text-slate-500 mt-0.5">Bukti konsep end-to-end mekanisme draft/publish Iterasi 18. Perubahan di sini tersimpan sebagai draft — cek "Buka Preview" untuk melihatnya sebelum Publish.</p>
+                <p class="text-xs text-slate-500 mt-0.5">Perubahan di sini tersimpan sebagai draft — cek "Buka Preview" untuk melihatnya sebelum Publish.</p>
             </div>
 
-            <form method="POST" action="{{ route('admin.appearance.animations.update') }}" class="space-y-4">
+            <form method="POST" action="{{ route('admin.appearance.animations.update') }}" x-data="{ style: '{{ $revealStyle }}' }" class="space-y-5">
                 @csrf
                 @method('PUT')
 
                 <div class="flex items-center justify-between gap-4 p-4 rounded-2xl border border-slate-200/70 bg-slate-50/60">
                     <div class="min-w-0">
                         <div class="text-sm font-bold text-slate-800">Reveal-on-scroll</div>
-                        <p class="text-xs text-slate-500 mt-0.5">Efek elemen muncul perlahan (fade + geser) saat di-scroll ke area layar. Nonaktifkan supaya konten langsung tampil tanpa animasi.</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Efek elemen muncul perlahan saat di-scroll ke area layar. Nonaktifkan supaya konten langsung tampil tanpa animasi (gaya di bawah diabaikan kalau ini mati).</p>
                     </div>
 
                     <label class="relative inline-flex items-center cursor-pointer shrink-0">
@@ -239,6 +239,38 @@
                             <div class="w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform"></div>
                         </div>
                     </label>
+                </div>
+
+                {{--
+                    Iterasi 26 (Fase 5) — gaya reveal-on-scroll, banyak
+                    pilihan (App\Support\AnimationStyle), radio-card 1 aktif
+                    (pola Alpine reaktif sama persis preset warna Iterasi 25
+                    — `style` x-model, bukan lagi kondisi Blade statis).
+                    Tiap kartu punya kotak preview mini `[data-demo-style]`
+                    (murni CSS @keyframes loop, lihat resources/css/app.css)
+                    supaya admin lihat kira-kira seperti apa TANPA perlu
+                    publish & buka preview situs publik dulu.
+                --}}
+                <div>
+                    <div class="text-xs font-bold text-slate-800 mb-2.5">Gaya Reveal-on-scroll</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        @foreach ($animationStyles as $key => $meta)
+                            <label class="relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border cursor-pointer transition-colors" :class="style === '{{ $key }}' ? 'border-slate-900 bg-slate-50' : 'border-slate-200/70 hover:bg-slate-50/60'">
+                                <input type="radio" name="reveal_style" value="{{ $key }}" x-model="style" class="sr-only">
+                                <div class="w-full h-12 rounded-xl bg-white border border-slate-200/80 flex items-center justify-center overflow-hidden shrink-0">
+                                    <div data-demo-style="{{ $key }}" class="w-7 h-7 rounded-lg bg-indigo-500"></div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-xs font-bold text-slate-700">{{ $meta['label'] }}</div>
+                                    <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">{{ $meta['description'] }}</p>
+                                </div>
+                                <span class="absolute top-2 right-2 w-4 h-4 rounded-full bg-slate-900 text-white items-center justify-center" :class="style === '{{ $key }}' ? 'flex' : 'hidden'">
+                                    <x-icon name="check" class="w-2.5 h-2.5" />
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('reveal_style') <p class="text-[11px] text-rose-600 font-semibold mt-2">{{ $message }}</p> @enderror
                 </div>
 
                 <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-colors">

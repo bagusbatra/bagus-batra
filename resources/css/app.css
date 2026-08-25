@@ -117,13 +117,46 @@
 /* Simple reveal-on-scroll (Intersection Observer driven via [data-reveal]) */
 [data-reveal] {
     opacity: 0;
-    transform: translateY(24px);
+    /* Iterasi 26 (Fase 5): --reveal-transform di-set per gaya di bawah
+       (body[data-reveal-style="..."]) — TANPA gaya dipilih (default, atau
+       body admin yang tidak punya atribut ini sama sekali), fallback
+       translateY(24px) ini persis nilai HARDCODED sebelum Iterasi 26, jadi
+       "fade-up" (default App\Support\AnimationStyle) TIDAK PERNAH bisa
+       regresi — bukan salah satu cabang kondisi, tapi literal fallback
+       var() bawaan CSS. */
+    transform: var(--reveal-transform, translateY(24px));
     transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-reveal].is-visible {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
+}
+
+/* Iterasi 26 (Fase 5) — varian gaya reveal-on-scroll (App\Support\AnimationStyle).
+   "fade-up" (default) SENGAJA tidak punya entry di sini — ia adalah nilai
+   fallback var() di atas, bukan salah satu cabang di bawah.
+   [data-demo-style="..."] (dipakai kartu preview mini di admin, lihat
+   admin/appearance/index.blade.php tab "Animasi & Efek") berbagi variabel
+   yang SAMA dgn body[data-reveal-style="..."] (situs publik) supaya
+   definisi transform 1 gaya cukup ditulis SEKALI, dipakai 2 tempat. */
+body[data-reveal-style="fade-in"], [data-demo-style="fade-in"] { --reveal-transform: none; }
+body[data-reveal-style="zoom-in"], [data-demo-style="zoom-in"] { --reveal-transform: scale(0.92); }
+body[data-reveal-style="slide-left"], [data-demo-style="slide-left"] { --reveal-transform: translateX(40px); }
+body[data-reveal-style="slide-right"], [data-demo-style="slide-right"] { --reveal-transform: translateX(-40px); }
+body[data-reveal-style="flip-up"], [data-demo-style="flip-up"] { --reveal-transform: perspective(800px) rotateX(-18deg) translateY(16px); }
+
+/* Loop demo mini (KARTU ADMIN SAJA, bukan situs publik) — murni CSS
+   @keyframes, tidak butuh IntersectionObserver/JS apa pun, supaya admin
+   bisa lihat kira-kira seperti apa tanpa perlu publish & buka preview
+   dulu. */
+@keyframes reveal-demo-loop {
+    0%, 15% { opacity: 0; transform: var(--reveal-transform, translateY(24px)); }
+    50%, 85% { opacity: 1; transform: none; }
+    100% { opacity: 0; transform: var(--reveal-transform, translateY(24px)); }
+}
+[data-demo-style] {
+    animation: reveal-demo-loop 2.4s ease-in-out infinite;
 }
 
 [x-cloak] {
@@ -167,5 +200,10 @@
     }
     [data-reveal] {
         transition: none;
+    }
+    [data-demo-style] {
+        animation: none;
+        opacity: 1;
+        transform: none;
     }
 }

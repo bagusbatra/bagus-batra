@@ -7,6 +7,7 @@ use App\Http\Controllers\PortfolioController;
 use App\Models\DisplaySetting;
 use App\Models\SectionSetting;
 use App\Support\AccentPreset;
+use App\Support\AnimationStyle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -39,6 +40,11 @@ class AppearanceController extends Controller
         // baru saja mereka simpan sebagai draft — beda dengan visitor
         // publik yang lewat DisplaySetting::get() dgn preview=false.
         $animationsEnabled = DisplaySetting::getBool('animations_enabled', true, true);
+
+        // Iterasi 26 (Fase 5) — gaya reveal-on-scroll, sama pola preview=true
+        // dgn $animationsEnabled.
+        $revealStyle = DisplaySetting::get('reveal_style', AnimationStyle::DEFAULT, true);
+        $animationStyles = AnimationStyle::STYLES;
 
         // Iterasi 19 (Fase 4) — sama pola dgn $animationsEnabled di atas:
         // admin yang sedang mengedit form SELALU melihat nilai efektif
@@ -104,6 +110,8 @@ class AppearanceController extends Controller
         return view('admin.appearance.index', compact(
             'sections',
             'animationsEnabled',
+            'revealStyle',
+            'animationStyles',
             'accentPreset',
             'accentCustomHex',
             'logoType',
@@ -125,14 +133,24 @@ class AppearanceController extends Controller
     /**
      * Bukti konsep Iterasi 18 — toggle animasi reveal-on-scroll. Menyimpan
      * ke `display_settings.value_draft`, BUKAN langsung ke `value` live.
+     *
+     * Iterasi 26 (Fase 5) — diperluas (BUKAN method baru) menangani
+     * `reveal_style` (gaya reveal-on-scroll, banyak pilihan 1 aktif)
+     * sekaligus dalam form/submit yang sama — `animations_enabled` (on/off)
+     * & `reveal_style` (gaya mana) adalah 2 setting independen tapi
+     * berdampingan secara UX (1 tab "Animasi & Efek", 1 tombol submit),
+     * jadi digabung di 1 method, sama pola dgn `updateSections()` Iterasi
+     * 20 yang menggabung reorder+display_count.
      */
     public function updateAnimations(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'animations_enabled' => ['nullable', 'boolean'],
+            'reveal_style' => ['required', Rule::in(AnimationStyle::keys())],
         ]);
 
         DisplaySetting::setDraft('animations_enabled', $request->boolean('animations_enabled'));
+        DisplaySetting::setDraft('reveal_style', $validated['reveal_style']);
 
         return redirect()
             ->route('admin.appearance', ['tab' => 'animasi'])

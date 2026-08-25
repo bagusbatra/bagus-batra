@@ -29,6 +29,61 @@ Status: Selesai / Selesai dengan catatan
 
 ---
 
+## Iterasi 26 — Gaya Reveal-on-Scroll (Banyak Pilihan, 1 Aktif) (selesai: 2026-08-25)
+Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan Iterasi 24-25.**
+
+### Ringkasan
+Sesuai `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` bagian 4 Iterasi 26, dgn keputusan cakupan yg sudah dikonfirmasi user sebelum rencana ditulis: "animasi" & "efek" adalah **1 kategori yang sama** (gaya reveal-on-scroll), BUKAN 2 kategori terpisah — ambient blob & scroll-progress bar TIDAK disentuh. **Kondisi awal sesi**: `git status --short` **BERSIH**, `git log` mengonfirmasi commit terakhir `d0eff05` ("Complete Phase 4 - Customization of Index Page", mencakup Iterasi 22-25) sudah ter-commit user — tidak disentuh/direvert, pekerjaan sesi ini ditumpuk di atasnya.
+
+1. **`App\Support\AnimationStyle`** (kelas baru, struktur SENGAJA meniru `App\Support\AccentPreset` — `DEFAULT`/`STYLES` const + `keys()`, pola yang sudah terbukti jalan sejak Iterasi 25) — 6 gaya: `fade-up` (default, = perilaku existing PERSIS sejak Iterasi 18), `fade-in`, `zoom-in`, `slide-left` ("Geser dari Kanan"), `slide-right` ("Geser dari Kiri"), `flip-up`. Kelas ini murni metadata (label/deskripsi utk UI) — TIDAK ada logic transform di PHP sama sekali, beda dari `AccentPreset` yg harus menghitung hex.
+2. **CSS 100% via custom property** (`resources/css/app.css`) — `[data-reveal] { transform: var(--reveal-transform, translateY(24px)); }`, 5 gaya non-default (`fade-up` TIDAK punya entry — ia ADALAH nilai fallback `var()` itu sendiri, bukan salah satu cabang) di-set lewat `body[data-reveal-style="x"] { --reveal-transform: ...; }`. **Konsekuensi desain penting**: gaya default `fade-up` TIDAK BISA regresi krn bukan hasil cabang kondisi apa pun, literal fallback bawaan `var()` — dibuktikan lewat regresi byte-per-byte di poin 5. `.is-visible` diubah dari `transform: translateY(0)` jadi `transform: none` — PERUBAHAN DIPERLUKAN (bukan estetika): `translateY(0)` HANYA mereset translasi, meninggalkan `scale()`/`rotateX()` dari gaya `zoom-in`/`flip-up` tetap aktif di state "sudah terlihat" (bug kalau tidak diubah) — `none` mereset SEMUA jenis transform sekaligus, benar utk 6 gaya sekaligus.
+3. **`data-reveal-style` di `<body>`** (`layouts/app.blade.php`) — atribut baru di samping `data-reveal-enabled` yg sudah ada, server-rendered dari `$revealStyle ?? AnimationStyle::DEFAULT` (draft-aware lewat `HandleAppearancePreview`, pola sama persis `$animationsEnabled`). **TIDAK ADA perubahan `reveal.js`** — observer itu cuma toggle class `.is-visible`, gaya 100% CSS-driven lewat selector atribut, sesuai desain di rencana.
+4. **2 setting independen tapi berdampingan**: `animations_enabled` (on/off, kill-switch utama — TETAP mematikan animasi total apa pun gaya yg dipilih) & `reveal_style` (gaya mana) — digabung jadi 1 form/submit di tab "Animasi & Efek" (`AppearanceController@updateAnimations()` DIPERLUAS, bukan method baru, pola sama `updateSections()` Iterasi 20 yg menggabung reorder+display_count).
+5. **UI admin — radio-card + preview mini murni CSS**: 6 kartu (Alpine reaktif `style` x-model, pola sama persis `selectedPreset` Iterasi 25), tiap kartu punya kotak `[data-demo-style="x"]` yg animasinya LOOP terus-menerus via `@keyframes reveal-demo-loop` (berbagi variabel `--reveal-transform` yg SAMA dgn `body[data-reveal-style]` — definisi 1 gaya cukup ditulis SEKALI, dipakai 2 tempat: reveal situs publik & preview admin) — admin bisa lihat kira-kira seperti apa TANPA publish & buka preview situs dulu. Loop demo dihormati `prefers-reduced-motion: reduce` (dimatikan, snap ke state akhir) — ditambahkan proaktif, konsisten dgn `[data-reveal]` yg sudah lebih dulu menghormati preferensi ini.
+6. **Beres-beres teks admin di luar scope literal** (ditemukan saat menyunting tab yg sama): deskripsi tab "Animasi & Efek" & paragraf tab "Ringkasan" masih menyebut "bukti konsep Iterasi 18"/"tab lain masih placeholder" — SUDAH TIDAK AKURAT sejak Iterasi 19-22 selesai (semua tab sudah fungsional penuh). Diperbaiki jadi deskripsi netral yg mencerminkan kondisi sebenarnya.
+
+### File/area utama yang berubah
+- **Kelas baru**: `app/Support/AnimationStyle.php`.
+- **CSS diubah**: `resources/css/app.css` — `[data-reveal]`/`.is-visible` disesuaikan utk mendukung multi-gaya, 5 varian `body[data-reveal-style]`/`[data-demo-style]` baru, `@keyframes reveal-demo-loop` baru, `prefers-reduced-motion` diperluas.
+- **Middleware diubah**: `app/Http/Middleware/HandleAppearancePreview.php` — tambah share `$revealStyle` (pola sama `$accentPreset`).
+- **Controller diubah**: `app/Http/Controllers/Admin/AppearanceController.php` — `index()` tambah `$revealStyle`/`$animationStyles`, `updateAnimations()` diperluas menangani `reveal_style`.
+- **View diubah**: `resources/views/layouts/app.blade.php` (atribut `data-reveal-style` baru di `<body>`), `resources/views/admin/appearance/index.blade.php` (tab "Animasi & Efek" — radio-card gaya baru; teks tab "Ringkasan" & "Animasi & Efek" dirapikan, lihat poin 6 Ringkasan).
+- **Skema DB**: TIDAK ada perubahan (`reveal_style` disimpan di `display_settings` generik yg sudah ada sejak Iterasi 18) — `docs/ERD.md` TIDAK diupdate.
+- **Asset**: `npm run build` dijalankan ulang.
+
+### Migrasi & seeder dijalankan
+- Tidak ada.
+
+### Verifikasi
+**Via `php artisan serve --port=8260` + `curl` sungguhan (cookie jar admin), `storage/logs/laravel.log` dikosongkan sebelum sesi → 0 baris di akhir.**
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | Baseline `GET /` sebelum apa pun disentuh | **LOLOS** — `data-reveal-style="fade-up"` (default, belum pernah diatur admin) |
+| 2 | `GET /admin/appearance?tab=animasi` | **LOLOS** — 6 kartu `[data-demo-style]` (fade-up/fade-in/zoom-in/slide-left/slide-right/flip-up), 6 radio `reveal_style` |
+| 3 | Draft `reveal_style=zoom-in` | **LOLOS** — DB `value=NULL, value_draft='zoom-in'` |
+| 4 | `GET /` TANPA cookie setelah draft #3 | **LOLOS** — tetap `data-reveal-style="fade-up"` (draft tidak bocor) |
+| 5 | `GET /` admin+`?preview=1` | **LOLOS** — `data-reveal-style="zoom-in"` |
+| 6 | `POST /admin/appearance/publish` | **LOLOS** — visitor TANPA cookie: `data-reveal-style="zoom-in"`; dicek langsung di CSS terkompilasi (`public/build/assets/app-*.css`) — selector `[data-reveal-style="zoom-in"]` & `--reveal-transform:scale(.92)` ada, `[data-demo-style]`/`reveal-demo-loop` juga ada |
+| 7 | Draft `animations_enabled=0` (checkbox tidak dicentang) + `reveal_style=zoom-in` tetap → publish | **LOLOS** — visitor: `data-reveal-enabled="0"` DAN `data-reveal-style="zoom-in"` sekaligus (2 setting independen, kill-switch tetap berfungsi apa pun gaya yg dipilih) |
+| 8 | Restore `animations_enabled=1` + `reveal_style=fade-up` → publish | **LOLOS** — DB akhir: `animations_enabled.value='1'`, `reveal_style.value='fade-up'`, `hasPendingDraft()`=false |
+| 9 | Submit `reveal_style=bogus-style` (nilai tak dikenal) | **LOLOS** — validasi gagal (`Rule::in(AnimationStyle::keys())`), tidak ada draft tertulis |
+| 10 | **Regresi byte-per-byte**: `GET /` (minus token CSRF) SEBELUM sesi ini dibandingkan SESUDAH seluruh perubahan (kondisi akhir = default `fade-up`, sama seperti awal) | **LOLOS — IDENTIK** (`diff` exit code 0) — membuktikan `fade-up` sbg fallback `var()` benar-benar tidak mengubah apa pun drpd hardcoded `translateY(24px)` sebelumnya |
+| 11 | Smoke-test 7 halaman admin (dashboard + 6 tab appearance) | **LOLOS** — semua 200 |
+
+`storage/logs/laravel.log` bersih (0 baris) di seluruh titik pengecekan. Server dimatikan (`taskkill` PID, dikonfirmasi request berikutnya `000`/connection refused).
+
+### Commit
+- Belum di-commit — menunggu review & commit manual dari user.
+
+### Catatan untuk review
+- **`fade-up` sengaja TIDAK punya entry CSS eksplisit** (`body[data-reveal-style="fade-up"]` tidak ada di `app.css`) — ia adalah nilai fallback `var(--reveal-transform, translateY(24px))` itu sendiri. Desain ini SENGAJA supaya default tidak mungkin regresi (tidak ada cabang kondisi yg bisa salah/tertinggal) — kalau nanti default ingin diganti gaya lain, cara paling aman adalah mengubah `AnimationStyle::DEFAULT` DAN mengisi fallback `var()` di CSS supaya tetap sinkron (jangan hanya salah satu).
+- **`.is-visible { transform: none; }`** (sebelumnya `translateY(0)`) — perubahan yg SECARA VISUAL identik untuk gaya `fade-up`/`fade-in`/`slide-*` (translasi 0 = none), tapi PERLU utk `zoom-in`/`flip-up` (reset scale/rotate). Dicatat eksplisit di sini krn ini satu-satunya baris CSS existing (bukan baru) yg diubah nilainya, bukan cuma ditambah.
+- **Ambient blob & scroll-progress bar TETAP TIDAK punya pengaturan on/off/gaya terpisah** — dikonfirmasi eksplisit dgn user sebelum rencana Iterasi 26 ditulis (lihat `docs/RENCANA-PENYEMPURNAAN-ADMIN.md` bagian 3), bukan terlewat.
+- Tidak ada `git add`/`git commit` dijalankan sepanjang sesi ini, sesuai instruksi user (commit manual).
+
+---
+
 ## Iterasi 25 — Preset Warna Aksen: Interaktivitas + Custom Color Picker (selesai: 2026-08-25)
 Status: Selesai — **Fase 5 (Penyempurnaan Admin & Konten), lanjutan Iterasi 24.**
 

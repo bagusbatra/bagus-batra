@@ -58,6 +58,7 @@
 <body
     x-data="appRoot()"
     data-reveal-enabled="{{ ($animationsEnabled ?? true) ? '1' : '0' }}"
+    data-reveal-style="{{ $revealStyle ?? \App\Support\AnimationStyle::DEFAULT }}"
     class="min-h-screen bg-slate-50/80 text-slate-800 flex flex-col selection:bg-indigo-500/15 selection:text-indigo-900 font-sans relative overflow-x-hidden"
 >
     {{--
